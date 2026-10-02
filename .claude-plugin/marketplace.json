@@ -1,0 +1,15 @@
+{
+  "name": "waitgame",
+  "description": "Play a quiz about your own repository while Claude Code is working, so your context stays loaded for the diff review that follows.",
+  "owner": {
+    "name": "Ismail Bayram"
+  },
+  "plugins": [
+    {
+      "name": "waitgame",
+      "source": ".",
+      "version": "0.2.0",
+      "description": "Play a quiz about your own repository while Claude Code is working, so your context stays loaded for the diff review that follows."
+    }
+  ]
+}

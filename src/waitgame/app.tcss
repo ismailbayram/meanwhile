@@ -1,0 +1,6 @@
+Screen { background: $surface; }
+#banner { color: $warning; padding: 0 1; }
+#status { color: $success; padding: 0 1; }
+#card { padding: 1 2; }
+#feedback { padding: 0 2; color: $accent; }
+#score { padding: 0 2; color: $text-muted; }

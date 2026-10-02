@@ -1,0 +1,15 @@
+{
+  "name": "waitgame",
+  "description": "Play a quiz about your own repository while Claude Code is working, so your context stays loaded for the diff review that follows.",
+  "version": "0.2.0",
+  "author": {
+    "name": "Ismail Bayram"
+  },
+  "license": "MIT",
+  "keywords": [
+    "quiz",
+    "context",
+    "review",
+    "waiting"
+  ]
+}
