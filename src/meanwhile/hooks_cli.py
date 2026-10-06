@@ -1,8 +1,8 @@
-"""Register meanwhile's busy/idle hooks with an agent that has no plugin system.
+"""Register meanwhile's busy/idle hooks with an agent, without its plugin system.
 
-Claude Code gets these two hooks from the plugin; Codex and Cursor expose the
-same two moments and have no plugin mechanism, so somebody has to write the
-registration into their config file by hand. This module does it.
+Claude Code and Codex can get these two hooks from the plugin; Cursor has no
+plugin mechanism, and OpenCode's is a JavaScript file somebody has to put in
+place, so the registration has to be written by hand. This module does it.
 
 Every failure mode here is silent: a registration written to the wrong path,
 naming the wrong event, or pointing at a script that has moved raises nothing
@@ -20,7 +20,7 @@ import shutil
 import subprocess
 from pathlib import Path
 
-from .agents import AGENTS, Agent, merge, registered_commands, unmerge
+from .agents import AGENTS, MARKER, Agent, merge, plugin_source, registered_commands, unmerge
 
 SCRIPT_NAME = "meanwhile-state.sh"
 
@@ -28,7 +28,7 @@ SCRIPT_NAME = "meanwhile-state.sh"
 #: so the registration we write there is one the user is likely to commit.
 #: Claude Code is absent on purpose: its project registration goes to
 #: `.claude/settings.local.json`, which is the gitignored one already.
-_COMMITTED_PROJECT_CONFIG = ("codex", "cursor")
+_COMMITTED_PROJECT_CONFIG = ("codex", "cursor", "opencode")
 
 #: What `uninstall` reads as "the file held nothing but ours": an empty
 #: document, or the bare "version" key `merge` adds for Cursor.
@@ -89,6 +89,53 @@ def config_path(agent: Agent, repo: str | Path, home: str | Path, user: bool = F
     return Path(repo) / agent.project_relpath
 
 
+def agent_dir(agent: Agent, repo: str | Path, home: str | Path, user: bool = False) -> Path:
+    """The directory whose existence says this agent is in use in that scope.
+
+    Normally the one the config file sits in. OpenCode's plugin file sits one
+    level further down, in a `plugins/` directory most projects do not have
+    until something is installed into it.
+    """
+    parent = config_path(agent, repo, home, user).parent
+    return parent.parent if agent.shape == "opencode" else parent
+
+
+def _is_plugin_file(agent: Agent) -> bool:
+    """Whether the registration is a whole file of ours rather than entries
+    merged into somebody else's JSON."""
+    return agent.shape == "opencode"
+
+
+def _read_plugin(path: Path) -> str | None:
+    """Our plugin file's text, `None` when there is no file.
+
+    A file at that path we did not write is a `HooksError`, for the same
+    reason an unparseable config is: it is somebody's own plugin, and writing
+    or deleting over it would take their work with it.
+    """
+    if not path.exists():
+        return None
+    try:
+        text = path.read_text(encoding="utf-8")
+    except (OSError, ValueError) as exc:
+        raise HooksError(f"{path} cannot be read ({exc}); fix it and run this again") from exc
+    if MARKER not in text:
+        raise HooksError(f"{path} exists and was not written by meanwhile; move it and run this again")
+    return text
+
+
+def _write_text(path: Path, text: str) -> None:
+    """Write `text` to `path`, atomically. See `_write_document`."""
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp = path.with_name(f"{path.name}.meanwhile.tmp")
+    try:
+        tmp.write_text(text, encoding="utf-8")
+        os.replace(tmp, path)
+    except OSError:
+        tmp.unlink(missing_ok=True)
+        raise
+
+
 def _read_document(path: Path) -> dict:
     """The JSON object at `path`, `{}` when there is no file.
 
@@ -120,14 +167,7 @@ def _write_document(path: Path, document: dict) -> None:
     filesystem, so `os.replace` is a rename) and then one atomic swap, exactly
     as the hook script next door writes the state file.
     """
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.meanwhile.tmp")
-    try:
-        tmp.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
-        os.replace(tmp, path)
-    except OSError:
-        tmp.unlink(missing_ok=True)
-        raise
+    _write_text(path, json.dumps(document, indent=2) + "\n")
 
 
 def _tracked_by_git(path: Path) -> bool:
@@ -187,6 +227,11 @@ def install(agent: Agent, repo: str | Path, home: str | Path, user: bool = False
     # Read and validate before copying anything: a refused install must leave
     # no trace, and the script copy is a write like any other.
     path = config_path(agent, repo, home, user)
+    if _is_plugin_file(agent):
+        _read_plugin(path)
+        script = install_script(installed_script(home))
+        _write_text(path, plugin_source(str(script), agent))
+        return f"{agent.label}: plugin written to {path}{_tracked_note(path, agent, user)}"
     document = _read_document(path)
     script = install_script(installed_script(home))
     _write_document(path, merge(document, agent, str(script)))
@@ -198,6 +243,10 @@ def uninstall(agent: Agent, repo: str | Path, home: str | Path, user: bool = Fal
     path = config_path(agent, repo, home, user)
     if not path.exists():
         return f"{agent.label}: nothing to remove, {path} does not exist"
+    if _is_plugin_file(agent):
+        _read_plugin(path)
+        path.unlink()
+        return f"{agent.label}: plugin removed, {path} deleted"
     remaining = unmerge(_read_document(path), agent)
     if remaining in _EMPTY_DOCUMENTS:
         # The file held nothing but our registration, so leave no husk behind.
@@ -233,11 +282,14 @@ def status(repo: str | Path, home: str | Path) -> list[str]:
                 continue
             path = config_path(agent, repo, home, user)
             try:
-                document = _read_document(path)
+                if _is_plugin_file(agent):
+                    registered = _read_plugin(path) is not None
+                else:
+                    registered = bool(registered_commands(_read_document(path), agent))
             except HooksError:
                 unreadable.append(str(path))
                 continue
-            if registered_commands(document, agent):
+            if registered:
                 scopes.append(scope)
         if scopes:
             line = f"{agent.slug} ({agent.label}): installed ({', '.join(scopes)}){note}"

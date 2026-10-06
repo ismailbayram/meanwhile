@@ -154,8 +154,8 @@ def _run_app(**kwargs) -> int:
 def run_hooks(argv: list[str]) -> int:
     """`meanwhile hooks install|status|uninstall` — register the busy/idle hooks.
 
-    Claude Code users get these from the plugin; this is for Codex, Cursor and
-    a standalone Claude Code.
+    Claude Code and Codex users can get these from the plugin; this is for
+    Cursor, OpenCode, and either of those two without it.
     """
     from . import hooks_cli
     from .agents import AGENTS, agent_by_slug
@@ -192,7 +192,7 @@ def run_hooks(argv: list[str]) -> int:
         for agent in AGENTS:
             # An agent's own directory is the only evidence that it is in use
             # here; `auto` never conjures one up from nothing.
-            if not hooks_cli.config_path(agent, repo_dir, home, args.user).parent.is_dir():
+            if not hooks_cli.agent_dir(agent, repo_dir, home, args.user).is_dir():
                 continue
             if args.user and not agent.supports_user_scope:
                 print(f"{agent.label}: skipped, it cannot be hooked at the user level")

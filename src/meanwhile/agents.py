@@ -1,14 +1,15 @@
 """Which agents meanwhile can hook into, and how each one registers hooks.
 
-The busy/idle signal is not Claude-specific: Codex and Cursor expose the same
-two moments under their own names, and the same bash script serves all three.
-Only the registration file and its JSON shape differ, so that is all this
+The busy/idle signal is not Claude-specific: Codex, Cursor and OpenCode expose
+the same two moments under their own names, and the same bash script serves
+all four. Only the registration file and its shape differ, so that is all this
 module knows about.
 """
 
 from __future__ import annotations
 
 import copy
+import json
 import re
 import shlex
 from dataclasses import dataclass
@@ -29,7 +30,9 @@ class Agent:
     idle_event: str
     #: Which config shape this agent's file uses: "claude" (a "hooks" map of
     #: event -> [{"hooks": [{"type": "command", ...}]}], shared with Codex) or
-    #: "cursor" (a versioned "hooks" map of event -> [{"command": ...}]).
+    #: "cursor" (a versioned "hooks" map of event -> [{"command": ...}]), or
+    #: "opencode" (no config entry at all: a whole JavaScript file of ours,
+    #: see `plugin_source`).
     shape: str
     project_relpath: str
     user_relpath: str
@@ -83,6 +86,21 @@ AGENTS: tuple[Agent, ...] = (
         # directory and the pane would simply never wake.
         supports_user_scope=False,
     ),
+    Agent(
+        slug="opencode",
+        label="OpenCode",
+        # One event for both moments: OpenCode has no shell hooks, only
+        # plugins, and a plugin hears `session.status` with the new status
+        # inside it.
+        busy_event="session.status",
+        idle_event="session.status",
+        shape="opencode",
+        project_relpath=".opencode/plugins/meanwhile.js",
+        user_relpath=".config/opencode/plugins/meanwhile.js",
+        # Unlike Cursor, a global plugin is still handed the project's own
+        # directory, so a user-level registration keys the right state file.
+        supports_user_scope=True,
+    ),
 )
 
 
@@ -107,6 +125,61 @@ def command_for(script: str, agent: Agent, status: str) -> str:
     not exist, which is exactly the silent failure this module exists to avoid.
     """
     return f"{shlex.quote(script)} {status} {agent.slug}"
+
+
+_OPENCODE_PLUGIN = """\
+// Written by `meanwhile hooks install --agent __AGENT__`, and removed again by
+// `meanwhile hooks uninstall --agent __AGENT__`. Edits here are overwritten.
+const SCRIPT = __SCRIPT__
+
+export const Meanwhile = async ({ $, client, directory }) => {
+  // A subagent runs in a session of its own, which goes busy and idle while
+  // the session that spawned it is still working. Only a session without a
+  // parent is the one the user is waiting on.
+  const children = new Map()
+  const isChild = async (id) => {
+    if (!children.has(id)) {
+      let child = false
+      try {
+        const found = await client.session.get({ path: { id } })
+        child = Boolean(found?.data?.parentID)
+      } catch {}
+      children.set(id, child)
+    }
+    return children.get(id)
+  }
+
+  return {
+    event: async ({ event }) => {
+      if (event.type !== "session.status") return
+      const status = event.properties.status.type
+      // "retry" is the third one: still working, so nothing to write.
+      if (status !== "busy" && status !== "idle") return
+      if (await isChild(event.properties.sessionID)) return
+      // The script keys the state file on CLAUDE_PROJECT_DIR, then on its
+      // working directory. Set both to the directory OpenCode was started in.
+      await $`${SCRIPT} ${status} __AGENT__`
+        .cwd(directory)
+        .env({ ...process.env, CLAUDE_PROJECT_DIR: directory })
+        .quiet()
+        .nothrow()
+    },
+  }
+}
+"""
+
+
+def plugin_source(script: str, agent: Agent) -> str:
+    """The whole plugin file an "opencode"-shaped agent loads.
+
+    `json.dumps` for the path: a JSON string is a JavaScript string literal,
+    so a quote or backslash in the user's home directory cannot end it early.
+    The shell side needs no quoting of its own — Bun's `$` passes every
+    interpolated value as one argument.
+    """
+    return _OPENCODE_PLUGIN.replace("__SCRIPT__", json.dumps(script)).replace(
+        "__AGENT__", agent.slug
+    )
 
 
 def _entry(command: str, shape: str) -> dict:

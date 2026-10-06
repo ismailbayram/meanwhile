@@ -6,7 +6,7 @@ the diff finally lands, you no longer hold the task in your head, and the
 review that follows is slower and shallower than it should be. meanwhile fills
 that wait with a quiz built entirely from your own repository, so that
 instead of drifting away you stay warmed up on the code you're about to
-review. It works the same way alongside Codex and Cursor.
+review. It works the same way alongside Codex, Cursor and OpenCode.
 
 ## Install
 
@@ -17,27 +17,53 @@ marketplace (`.claude-plugin/marketplace.json`). Add it as a marketplace,
 then install the plugin from it:
 
 ```
-/plugin marketplace add /path/to/meanwhile
+/plugin marketplace add ismailbayram/meanwhile
 /plugin install meanwhile@meanwhile
 ```
 
-(Once the repo is hosted somewhere your team can reach, add it from there
-instead — for example `/plugin marketplace add owner/meanwhile` for a GitHub
-repo.) Restart Claude Code afterwards so the plugin's hooks are picked up.
+(While developing against a checkout of this repo, add the local path
+instead — `/plugin marketplace add /path/to/meanwhile`.) Restart Claude Code
+afterwards so the plugin's hooks are picked up.
 
 Installing the plugin adds two hooks and one slash command; it does not
 install the `meanwhile` command itself. That's a separate, ordinary Python
 package — see "Daily use" below.
 
-### Codex and Cursor
+### Codex
 
-Codex and Cursor have no plugin system, so `meanwhile` writes the hook
-registration into their config file directly:
+This repository is a Codex plugin and marketplace too (`plugin.json`,
+`.agents/plugins/marketplace.json`). Add the marketplace:
 
 ```
-uvx claude-meanwhile hooks install --agent codex
+codex plugin marketplace add ismailbayram/meanwhile
+```
+
+then install `meanwhile` from the Plugins Directory. Codex does not run a
+plugin's hooks until you have reviewed and trusted them, so do that once
+after installing — until then the pane never wakes.
+
+### Cursor, OpenCode, or Codex without the plugin
+
+Cursor has no plugin system, so `meanwhile` writes the hook registration into
+the agent's config file directly. The same works for Codex if you would
+rather not install the plugin:
+
+```
 uvx claude-meanwhile hooks install --agent cursor
+uvx claude-meanwhile hooks install --agent codex
 ```
+
+OpenCode has no shell hooks at all, only JavaScript plugins, so there the
+same command writes a small plugin file — `.opencode/plugins/meanwhile.js`,
+or `~/.config/opencode/plugins/meanwhile.js` with `--user` — that calls the
+hook script whenever a session goes busy or idle:
+
+```
+uvx claude-meanwhile hooks install --agent opencode
+```
+
+Restart OpenCode afterwards; plugins are loaded at startup. A file already
+at that path that `meanwhile` did not write is refused, never overwritten.
 
 (While developing against a checkout of this repo instead of the published
 package, use `uv run meanwhile hooks install --agent codex` from inside it.)
@@ -46,8 +72,9 @@ Leaving off `--agent` (or passing `--agent auto` explicitly) installs for
 every agent whose config directory already exists in this project — it never
 creates one, so an agent you don't use is left alone. `meanwhile hooks status`
 reports what's registered and where — only the registrations meanwhile itself
-wrote, so a Claude Code *plugin* install is invisible to it and shows as `not
-installed (the plugin registers its own hooks separately)`. `meanwhile hooks
+wrote, so a *plugin* install is invisible to it: Claude Code shows as `not
+installed (the plugin registers its own hooks separately)`, Codex as plain
+`not installed`. `meanwhile hooks
 uninstall --agent <agent>` takes a registration back out.
 
 Cursor only supports project-scope registration. `--user` is refused for it:
@@ -58,14 +85,14 @@ never wake the right pane.
 For Claude Code, a `hooks install` registration is written to
 `.claude/settings.local.json`, not `settings.json` — the entry embeds an
 absolute path to this machine's copy of the hook script, and `settings.json`
-is the file teams commit. A Codex or Cursor project registration has no such
-gitignored sibling to move to, so `hooks install` prints a note there — every
+is the file teams commit. A Codex, Cursor or OpenCode project registration
+has no such gitignored sibling to move to, so `hooks install` prints a note there — every
 time, whether or not git already tracks the file — saying that the path it
 just wrote is specific to this machine and that committing it would leave
 teammates running a script they do not have.
 
-If you both install the plugin *and* run `meanwhile hooks install --agent
-claude`, the two hooks fire twice per prompt. That's harmless — both copies
+If you both install the plugin *and* run `meanwhile hooks install` for the
+same agent, the two hooks fire twice per prompt. That's harmless — both copies
 are byte-identical (`hooks/meanwhile-state.sh` for the plugin,
 `~/.meanwhile/meanwhile-state.sh` for the standalone registration) and are run
 with the same arguments against the same state file, so it's one redundant
@@ -91,7 +118,7 @@ This asks Claude to read the repository — models, routes, the README,
 `CHANGELOG.md`, recent commits — and write `.meanwhile/pool.json`: a set of
 multiple-choice questions drawn from that project's actual code.
 
-**Codex, Cursor, or any other agent**: `/meanwhile-build` is a Claude Code
+**Codex, Cursor, OpenCode, or any other agent**: `/meanwhile-build` is a Claude Code
 slash command, so run this instead and paste the printed instructions to
 your agent:
 
@@ -179,19 +206,20 @@ build-prompt              (same instructions, any other agent)
    meanwhile TUI  ──watches──►  ~/.meanwhile/state/<project-hash>.json
    (uvx, separate pane)                    ▲
                                            │ writes
-                    hooks: plugin (Claude Code), or `meanwhile hooks
-                    install` (Claude Code, Codex, Cursor)
+                    hooks: plugin (Claude Code, Codex), or `meanwhile
+                    hooks install` (those two, Cursor, OpenCode)
 ```
 
-- **`/meanwhile-build`** (or `meanwhile build-prompt` for Codex and Cursor) is
+- **`/meanwhile-build`** (or `meanwhile build-prompt` for every other agent) is
   the only part that costs tokens or touches an LLM. It reads the repository
   and writes `.meanwhile/pool.json`.
 - **The hooks** are a few lines of pure bash (`hooks/meanwhile-state.sh` for
   the plugin; the same script, packaged inside the wheel and copied to
   `~/.meanwhile/meanwhile-state.sh`, for `hooks install`), fired on the moment
   each agent starts and stops working — `UserPromptSubmit`/`Stop` for
-  Claude Code and Codex,
-  `beforeSubmitPrompt`/`stop` for Cursor. They write nothing but a
+  Claude Code and Codex, `beforeSubmitPrompt`/`stop` for Cursor, and the
+  `session.status` event for OpenCode, whose plugin file does nothing but
+  call the same script. They write nothing but a
   `{"status": "busy"|"idle", "ts": ..., "agent": ...}` file under
   `~/.meanwhile/state/`, keyed by a hash of the directory the agent was
   started in (that is what `CLAUDE_PROJECT_DIR` holds for Claude Code — not

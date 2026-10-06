@@ -1,0 +1,20 @@
+{
+  "name": "meanwhile",
+  "interface": {
+    "displayName": "meanwhile"
+  },
+  "plugins": [
+    {
+      "name": "meanwhile",
+      "source": {
+        "source": "local",
+        "path": "./"
+      },
+      "policy": {
+        "installation": "AVAILABLE",
+        "authentication": "ON_INSTALL"
+      },
+      "category": "Productivity"
+    }
+  ]
+}

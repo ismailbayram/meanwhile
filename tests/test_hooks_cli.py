@@ -119,6 +119,7 @@ def test_status_says_it_cannot_see_a_claude_code_plugin_install(sandbox):
     )
     assert lines["codex"] == "codex (Codex): not installed"
     assert lines["cursor"] == "cursor (Cursor): not installed"
+    assert lines["opencode"] == "opencode (OpenCode): not installed"
 
 
 def test_the_plugin_note_is_only_on_the_not_installed_line(sandbox):
@@ -254,6 +255,72 @@ def test_uninstall_on_a_config_that_was_never_installed(sandbox):
 # --- the command line ---------------------------------------------------------
 
 
+def test_opencode_install_writes_a_plugin_file_and_the_script(sandbox):
+    """OpenCode has no hook config to merge into: the registration is a whole
+    JavaScript file of ours, in the directory OpenCode loads plugins from."""
+    repo, home = sandbox
+    agent = agents.agent_by_slug("opencode")
+    hooks_cli.install(agent, repo=repo, home=home)
+
+    script = home / ".meanwhile" / "meanwhile-state.sh"
+    assert os.stat(script).st_mode & stat.S_IXUSR
+    path = repo / ".opencode" / "plugins" / "meanwhile.js"
+    assert path.read_text() == agents.plugin_source(str(script), agent)
+
+    hooks_cli.install(agent, repo=repo, home=home)
+    assert path.read_text() == agents.plugin_source(str(script), agent)
+    assert [p.name for p in path.parent.iterdir()] == ["meanwhile.js"], "no temp file left behind"
+
+
+def test_opencode_user_scope_goes_under_the_config_directory(sandbox):
+    repo, home = sandbox
+    hooks_cli.install(agents.agent_by_slug("opencode"), repo=repo, home=home, user=True)
+    assert (home / ".config" / "opencode" / "plugins" / "meanwhile.js").exists()
+    assert not (repo / ".opencode").exists()
+
+
+@pytest.mark.parametrize("action", [hooks_cli.install, hooks_cli.uninstall])
+def test_opencode_refuses_a_plugin_file_it_did_not_write(sandbox, action):
+    """Same rule as an unparseable config: it is somebody's own file, and
+    neither overwriting nor deleting it is ours to do."""
+    repo, home = sandbox
+    agent = agents.agent_by_slug("opencode")
+    path = hooks_cli.config_path(agent, repo, home, user=False)
+    path.parent.mkdir(parents=True)
+    path.write_text("export const Theirs = async () => ({})\n")
+
+    with pytest.raises(hooks_cli.HooksError) as excinfo:
+        action(agent, repo=repo, home=home)
+
+    assert str(path) in str(excinfo.value)
+    assert path.read_text() == "export const Theirs = async () => ({})\n"
+    assert not (home / ".meanwhile").exists()
+
+
+def test_opencode_uninstall_deletes_the_plugin_file(sandbox):
+    repo, home = sandbox
+    agent = agents.agent_by_slug("opencode")
+    path = hooks_cli.config_path(agent, repo, home, user=False)
+    assert "nothing to remove" in hooks_cli.uninstall(agent, repo=repo, home=home)
+
+    hooks_cli.install(agent, repo=repo, home=home)
+    hooks_cli.uninstall(agent, repo=repo, home=home)
+    assert not path.exists()
+
+
+def test_status_reports_an_opencode_install_and_a_foreign_plugin_file(sandbox):
+    repo, home = sandbox
+    agent = agents.agent_by_slug("opencode")
+    hooks_cli.install(agent, repo=repo, home=home)
+    line = next(l for l in hooks_cli.status(repo=repo, home=home) if l.startswith("opencode"))
+    assert line == "opencode (OpenCode): installed (project)"
+
+    path = hooks_cli.config_path(agent, repo, home, user=False)
+    path.write_text("export const Theirs = async () => ({})\n")
+    line = next(l for l in hooks_cli.status(repo=repo, home=home) if l.startswith("opencode"))
+    assert line == f"opencode (OpenCode): unreadable config: {path}"
+
+
 @pytest.fixture
 def home_env(sandbox, monkeypatch):
     repo, home = sandbox
@@ -284,6 +351,17 @@ def test_cli_auto_only_touches_agents_that_already_have_a_directory(home_env, ca
     assert not (repo / ".cursor").exists()
     assert not (repo / ".claude").exists()
     assert "Codex" in capsys.readouterr().out
+
+
+def test_cli_auto_finds_opencode_by_its_directory_not_its_plugins_directory(home_env, capsys):
+    """The plugin file sits in `.opencode/plugins/`, which a project that has
+    never installed a plugin does not have. `.opencode/` is the evidence."""
+    repo, _ = home_env
+    (repo / ".opencode").mkdir()
+    assert cli.main(["hooks", "install", "--repo", str(repo)]) == 0
+
+    assert (repo / ".opencode" / "plugins" / "meanwhile.js").exists()
+    assert "OpenCode" in capsys.readouterr().out
 
 
 def test_cli_auto_says_so_when_it_finds_no_agent(home_env, capsys):

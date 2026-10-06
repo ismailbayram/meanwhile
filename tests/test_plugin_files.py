@@ -24,6 +24,11 @@ BUILD_COMMAND = ROOT / "commands" / "meanwhile-build.md"
 PROMPT_SOURCE = ROOT / "src" / "meanwhile" / "build_prompt.md"
 PLUGIN_MANIFEST = ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_MANIFEST = ROOT / ".claude-plugin" / "marketplace.json"
+# Codex reads the portable manifest at the plugin root, and its own marketplace
+# file; the Claude Code pair above is invisible to it except as a fallback.
+CODEX_MANIFEST = ROOT / "plugin.json"
+CODEX_MARKETPLACE = ROOT / ".agents" / "plugins" / "marketplace.json"
+CLAUDE_HOOKS = ROOT / "hooks" / "hooks.json"
 PYPROJECT = ROOT / "pyproject.toml"
 README = ROOT / "README.md"
 
@@ -122,6 +127,48 @@ def test_the_manifests_name_an_author_and_a_description():
     assert plugin["description"] == marketplace["description"]
 
 
+def _hook_commands(path: Path) -> dict[str, str]:
+    hooks = json.loads(path.read_text(encoding="utf-8"))["hooks"]
+    return {event: entries[0]["hooks"][0]["command"] for event, entries in hooks.items()}
+
+
+def test_the_codex_manifest_points_at_hooks_that_name_codex():
+    """Without an explicit `hooks` path Codex discovers `hooks/hooks.json` —
+    the Claude Code file, which stamps every state file "claude". The pane
+    would then announce "Claude Code is done" in a Codex session."""
+    manifest = json.loads(CODEX_MANIFEST.read_text(encoding="utf-8"))
+    relpath = manifest["extensions"]["com.openai"]["hooks"]
+    assert relpath.startswith("./")
+    hooks_file = ROOT / relpath
+    assert hooks_file != CLAUDE_HOOKS
+
+    assert _hook_commands(hooks_file) == {
+        "UserPromptSubmit": '"${PLUGIN_ROOT}/hooks/meanwhile-state.sh" busy codex',
+        "Stop": '"${PLUGIN_ROOT}/hooks/meanwhile-state.sh" idle codex',
+    }
+    # Same script, same events, only the root variable and the agent differ.
+    assert _hook_commands(CLAUDE_HOOKS) == {
+        event: command.replace("${PLUGIN_ROOT}", "${CLAUDE_PLUGIN_ROOT}").replace(" codex", " claude")
+        for event, command in _hook_commands(hooks_file).items()
+    }
+
+
+def test_the_codex_manifests_describe_the_same_plugin_as_the_claude_ones():
+    codex = json.loads(CODEX_MANIFEST.read_text(encoding="utf-8"))
+    claude = json.loads(PLUGIN_MANIFEST.read_text(encoding="utf-8"))
+    marketplace = json.loads(CODEX_MARKETPLACE.read_text(encoding="utf-8"))
+
+    for key in ("name", "description", "author", "license", "keywords"):
+        assert codex[key] == claude[key], key
+    (entry,) = marketplace["plugins"]
+    assert entry["name"] == codex["name"]
+    # Resolved against the marketplace root — the repository — not against
+    # .agents/plugins/, so this must land on the directory plugin.json is in.
+    assert (ROOT / entry["source"]["path"]).resolve() == CODEX_MANIFEST.parent
+    assert {"installation", "authentication"} <= set(entry["policy"])
+    assert entry["category"]
+
+
 def test_the_language_is_asked_for_as_a_code_and_the_two_shipped_ones_are_named():
     """`--lang` and the pool's `language` field are matched against `tr` and
     `en`; anything else falls back to English without a word. Every place that
@@ -149,6 +196,7 @@ def test_every_version_in_the_repository_agrees():
         "meanwhile.__version__": meanwhile.__version__,
         "plugin.json": plugin["version"],
         "marketplace.json": marketplace["plugins"][0]["version"],
+        "plugin.json (codex)": json.loads(CODEX_MANIFEST.read_text(encoding="utf-8"))["version"],
     }
 
     assert len(set(versions.values())) == 1, versions

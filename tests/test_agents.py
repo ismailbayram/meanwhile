@@ -1,4 +1,5 @@
 import copy
+import json
 import re
 import shlex
 import subprocess
@@ -12,7 +13,7 @@ SCRIPT = "/home/x/.meanwhile/meanwhile-state.sh"
 
 def test_every_agent_has_a_distinct_slug_and_a_label():
     slugs = [a.slug for a in agents.AGENTS]
-    assert sorted(slugs) == ["claude", "codex", "cursor"]
+    assert sorted(slugs) == ["claude", "codex", "cursor", "opencode"]
     assert len(set(slugs)) == len(slugs)
     assert all(a.label and agents.SLUG_PATTERN.match(a.slug) for a in agents.AGENTS)
 
@@ -32,12 +33,38 @@ def test_the_event_names_are_exactly_the_ones_each_agent_fires():
         "claude": ("UserPromptSubmit", "Stop"),
         "codex": ("UserPromptSubmit", "Stop"),
         "cursor": ("beforeSubmitPrompt", "stop"),
+        # One event carrying both statuses; see the plugin source test below.
+        "opencode": ("session.status", "session.status"),
     }
 
 
 def test_cursor_refuses_user_scope_and_the_others_allow_it():
     scopes = {a.slug: a.supports_user_scope for a in agents.AGENTS}
-    assert scopes == {"claude": True, "codex": True, "cursor": False}
+    assert scopes == {"claude": True, "codex": True, "cursor": False, "opencode": True}
+
+
+def test_the_opencode_plugin_names_the_event_and_the_statuses_it_fires():
+    """The literals nothing else can check, for the agent that has no JSON to
+    read them back out of: the event OpenCode publishes, the two statuses the
+    script accepts, and the session field that marks a subagent."""
+    agent = agents.agent_by_slug("opencode")
+    source = agents.plugin_source(SCRIPT, agent)
+
+    assert f'event.type !== "{agent.busy_event}"' in source
+    assert 'status !== "busy" && status !== "idle"' in source
+    assert "parentID" in source
+    assert "${SCRIPT} ${status} opencode" in source
+    assert "__" not in source, "a placeholder was left unfilled"
+
+
+@pytest.mark.parametrize("script", [SCRIPT, '/home/o"brien/a\\b/meanwhile-state.sh'])
+def test_the_opencode_plugin_carries_the_script_path_as_a_string_literal(script):
+    source = agents.plugin_source(script, agents.agent_by_slug("opencode"))
+    (line,) = [l for l in source.splitlines() if l.startswith("const SCRIPT = ")]
+    # A JSON string is a JavaScript string literal, so reading it back as JSON
+    # is reading it the way the runtime will.
+    assert json.loads(line.removeprefix("const SCRIPT = ")) == script
+    assert agents.MARKER in source
 
 
 def test_label_for_known_and_unknown_slugs():

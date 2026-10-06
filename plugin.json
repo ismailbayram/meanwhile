@@ -1,0 +1,30 @@
+{
+  "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
+  "name": "meanwhile",
+  "version": "0.2.0",
+  "description": "Play a quiz about your own repository while Claude Code is working, so your context stays loaded for the diff review that follows.",
+  "author": {
+    "name": "Ismail Bayram"
+  },
+  "homepage": "https://github.com/ismailbayram/meanwhile",
+  "repository": "https://github.com/ismailbayram/meanwhile",
+  "license": "MIT",
+  "keywords": [
+    "quiz",
+    "context",
+    "review",
+    "waiting"
+  ],
+  "extensions": {
+    "com.openai": {
+      "hooks": "./hooks/codex-hooks.json",
+      "interface": {
+        "displayName": "meanwhile",
+        "shortDescription": "A quiz about your own repository while the agent works",
+        "developerName": "Ismail Bayram",
+        "category": "Productivity",
+        "websiteURL": "https://github.com/ismailbayram/meanwhile"
+      }
+    }
+  }
+}
