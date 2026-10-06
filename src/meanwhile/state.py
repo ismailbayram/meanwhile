@@ -10,7 +10,7 @@ from pathlib import Path
 
 from .agents import SLUG_PATTERN
 
-STATE_ROOT = Path.home() / ".waitgame" / "state"
+STATE_ROOT = Path.home() / ".meanwhile" / "state"
 
 _VALID = ("busy", "idle")
 _IDLE = {"status": "idle", "ts": 0.0, "agent": None}
@@ -19,7 +19,7 @@ _IDLE = {"status": "idle", "ts": 0.0, "agent": None}
 def project_key(project_dir: str | Path) -> str:
     """Short, stable id for a project directory.
 
-    Must stay byte-for-byte compatible with hooks/waitgame-state.sh:
+    Must stay byte-for-byte compatible with hooks/meanwhile-state.sh:
     sha256 of the resolved path, no trailing newline, first 16 hex chars.
     """
     resolved = str(Path(project_dir).resolve())

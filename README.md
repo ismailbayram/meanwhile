@@ -1,9 +1,9 @@
-# waitgame
+# meanwhile
 
 Claude Code takes a while on real tasks — often ten or fifteen minutes. During
 that wait, attention drifts: a browser tab, a chat, something unrelated. When
 the diff finally lands, you no longer hold the task in your head, and the
-review that follows is slower and shallower than it should be. waitgame fills
+review that follows is slower and shallower than it should be. meanwhile fills
 that wait with a quiz built entirely from your own repository, so that
 instead of drifting away you stay warmed up on the code you're about to
 review. It works the same way alongside Codex and Cursor.
@@ -12,42 +12,42 @@ review. It works the same way alongside Codex and Cursor.
 
 ### Claude Code
 
-waitgame is a Claude Code plugin, and this repository is also its own
+meanwhile is a Claude Code plugin, and this repository is also its own
 marketplace (`.claude-plugin/marketplace.json`). Add it as a marketplace,
 then install the plugin from it:
 
 ```
-/plugin marketplace add /path/to/waitgame
-/plugin install waitgame@waitgame
+/plugin marketplace add /path/to/meanwhile
+/plugin install meanwhile@meanwhile
 ```
 
 (Once the repo is hosted somewhere your team can reach, add it from there
-instead — for example `/plugin marketplace add owner/waitgame` for a GitHub
+instead — for example `/plugin marketplace add owner/meanwhile` for a GitHub
 repo.) Restart Claude Code afterwards so the plugin's hooks are picked up.
 
 Installing the plugin adds two hooks and one slash command; it does not
-install the `waitgame` command itself. That's a separate, ordinary Python
+install the `meanwhile` command itself. That's a separate, ordinary Python
 package — see "Daily use" below.
 
 ### Codex and Cursor
 
-Codex and Cursor have no plugin system, so `waitgame` writes the hook
+Codex and Cursor have no plugin system, so `meanwhile` writes the hook
 registration into their config file directly:
 
 ```
-uvx claude-waitgame hooks install --agent codex
-uvx claude-waitgame hooks install --agent cursor
+uvx claude-meanwhile hooks install --agent codex
+uvx claude-meanwhile hooks install --agent cursor
 ```
 
 (While developing against a checkout of this repo instead of the published
-package, use `uv run waitgame hooks install --agent codex` from inside it.)
+package, use `uv run meanwhile hooks install --agent codex` from inside it.)
 
 Leaving off `--agent` (or passing `--agent auto` explicitly) installs for
 every agent whose config directory already exists in this project — it never
-creates one, so an agent you don't use is left alone. `waitgame hooks status`
-reports what's registered and where — only the registrations waitgame itself
+creates one, so an agent you don't use is left alone. `meanwhile hooks status`
+reports what's registered and where — only the registrations meanwhile itself
 wrote, so a Claude Code *plugin* install is invisible to it and shows as `not
-installed (the plugin registers its own hooks separately)`. `waitgame hooks
+installed (the plugin registers its own hooks separately)`. `meanwhile hooks
 uninstall --agent <agent>` takes a registration back out.
 
 Cursor only supports project-scope registration. `--user` is refused for it:
@@ -64,15 +64,15 @@ time, whether or not git already tracks the file — saying that the path it
 just wrote is specific to this machine and that committing it would leave
 teammates running a script they do not have.
 
-If you both install the plugin *and* run `waitgame hooks install --agent
+If you both install the plugin *and* run `meanwhile hooks install --agent
 claude`, the two hooks fire twice per prompt. That's harmless — both copies
-are byte-identical (`hooks/waitgame-state.sh` for the plugin,
-`~/.waitgame/waitgame-state.sh` for the standalone registration) and are run
+are byte-identical (`hooks/meanwhile-state.sh` for the plugin,
+`~/.meanwhile/meanwhile-state.sh` for the standalone registration) and are run
 with the same arguments against the same state file, so it's one redundant
 run per event — but worth knowing so you don't go looking for a bug.
 
 `hooks` is handled before the normal argument parser is built, so it never
-appears in `waitgame --help`. `build-prompt` (below) does appear there, but
+appears in `meanwhile --help`. `build-prompt` (below) does appear there, but
 only as a bare choice with no explanation of what it does — so this README
 is where to learn about both.
 
@@ -84,25 +84,25 @@ regenerates it in the background.
 **Claude Code**: run
 
 ```
-/waitgame-build
+/meanwhile-build
 ```
 
 This asks Claude to read the repository — models, routes, the README,
-`CHANGELOG.md`, recent commits — and write `.waitgame/pool.json`: a set of
+`CHANGELOG.md`, recent commits — and write `.meanwhile/pool.json`: a set of
 multiple-choice questions drawn from that project's actual code.
 
-**Codex, Cursor, or any other agent**: `/waitgame-build` is a Claude Code
+**Codex, Cursor, or any other agent**: `/meanwhile-build` is a Claude Code
 slash command, so run this instead and paste the printed instructions to
 your agent:
 
 ```
-uvx claude-waitgame build-prompt --lang en --repo .
+uvx claude-meanwhile build-prompt --lang en --repo .
 ```
 
 It prints the exact same instructions the slash command uses, so the pool
 comes out the same either way.
 
-Commit `.waitgame/pool.json`. It's checked into the repository on purpose, so
+Commit `.meanwhile/pool.json`. It's checked into the repository on purpose, so
 everyone on the team plays the same pool and nobody pays to regenerate it.
 
 `--lang` takes a short language code — `tr` or `en` — not a language name:
@@ -130,11 +130,11 @@ split, an iTerm pane, or just another window — sitting in the *same directory
 you started it in*, and run:
 
 ```
-uvx claude-waitgame
+uvx claude-meanwhile
 ```
 
 (While developing against a checkout of this repo instead of the published
-package, use `uv run waitgame` from inside it.)
+package, use `uv run meanwhile` from inside it.)
 
 Open it whenever you like — before your first prompt is fine. The pane sits
 waiting until your agent starts working, wakes up within about a second of
@@ -159,48 +159,48 @@ nothing in is not recorded.
 
 The interface follows the language recorded in the pool. Override it for
 just your pane with `--lang` and a short code, for example `uvx
-claude-waitgame --lang en`, regardless of what the pool says. `tr` and `en`
+claude-meanwhile --lang en`, regardless of what the pool says. `tr` and `en`
 are the two the interface speaks; any other code leaves it in English.
 
 ## How it works
 
-waitgame is three independent parts that only ever talk to each other
+meanwhile is three independent parts that only ever talk to each other
 through two files on disk — nothing imports anything else, and each part can
 be tested alone:
 
 ```
-/waitgame-build          (Claude Code slash command)
+/meanwhile-build          (Claude Code slash command)
 build-prompt              (same instructions, any other agent)
         │  writes
         ▼
-   .waitgame/pool.json          ← committed to the repo, shared by the team
+   .meanwhile/pool.json          ← committed to the repo, shared by the team
         │  reads
         ▼
-   waitgame TUI  ──watches──►  ~/.waitgame/state/<project-hash>.json
+   meanwhile TUI  ──watches──►  ~/.meanwhile/state/<project-hash>.json
    (uvx, separate pane)                    ▲
                                            │ writes
-                    hooks: plugin (Claude Code), or `waitgame hooks
+                    hooks: plugin (Claude Code), or `meanwhile hooks
                     install` (Claude Code, Codex, Cursor)
 ```
 
-- **`/waitgame-build`** (or `waitgame build-prompt` for Codex and Cursor) is
+- **`/meanwhile-build`** (or `meanwhile build-prompt` for Codex and Cursor) is
   the only part that costs tokens or touches an LLM. It reads the repository
-  and writes `.waitgame/pool.json`.
-- **The hooks** are a few lines of pure bash (`hooks/waitgame-state.sh` for
+  and writes `.meanwhile/pool.json`.
+- **The hooks** are a few lines of pure bash (`hooks/meanwhile-state.sh` for
   the plugin; the same script, packaged inside the wheel and copied to
-  `~/.waitgame/waitgame-state.sh`, for `hooks install`), fired on the moment
+  `~/.meanwhile/meanwhile-state.sh`, for `hooks install`), fired on the moment
   each agent starts and stops working — `UserPromptSubmit`/`Stop` for
   Claude Code and Codex,
   `beforeSubmitPrompt`/`stop` for Cursor. They write nothing but a
   `{"status": "busy"|"idle", "ts": ..., "agent": ...}` file under
-  `~/.waitgame/state/`, keyed by a hash of the directory the agent was
+  `~/.meanwhile/state/`, keyed by a hash of the directory the agent was
   started in (that is what `CLAUDE_PROJECT_DIR` holds for Claude Code — not
   necessarily the git root, which is why the TUI must be launched from the
   same directory). No interpreter, no network, no measurable delay added to
   your prompt.
-- **The `waitgame` TUI**, run separately as `uvx claude-waitgame`, polls
+- **The `meanwhile` TUI**, run separately as `uvx claude-meanwhile`, polls
   that state file and renders cards from the pool. It finds
-  `.waitgame/pool.json` at the git root above wherever you launched it. It makes no LLM calls and
+  `.meanwhile/pool.json` at the git root above wherever you launched it. It makes no LLM calls and
   parses no source code at play time — it only reads the two JSON files
   above.
 
@@ -211,12 +211,12 @@ moved on more than about 50 commits since then, the TUI shows a banner —
 `pool is N commits behind — run the build command for fresh questions` — but
 it never regenerates the pool on its own. Silent background regeneration
 would spend tokens you didn't ask for, which is exactly what this design
-avoids. Run `/waitgame-build` (or `waitgame build-prompt`) again when you see
+avoids. Run `/meanwhile-build` (or `meanwhile build-prompt`) again when you see
 the banner (or whenever the pool just feels stale) and commit the updated
 file.
 
 ## Scores
 
-Your running total and best streak are written to `.waitgame/scores.json`.
+Your running total and best streak are written to `.meanwhile/scores.json`.
 That file is gitignored — scores are local to your machine and never shared
 or synced between teammates.

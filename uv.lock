@@ -12,7 +12,7 @@ wheels = [
 ]
 
 [[package]]
-name = "claude-waitgame"
+name = "claude-meanwhile"
 version = "0.2.0"
 source = { editable = "." }
 dependencies = [

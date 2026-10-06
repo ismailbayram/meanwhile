@@ -1,4 +1,4 @@
-"""Reading and validating .waitgame/pool.json.
+"""Reading and validating .meanwhile/pool.json.
 
 The pool is produced by an LLM at build time, so every field is treated as
 untrusted input: the loader validates shape, not content.
@@ -10,7 +10,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-POOL_RELPATH = ".waitgame/pool.json"
+POOL_RELPATH = ".meanwhile/pool.json"
 
 
 class PoolError(Exception):

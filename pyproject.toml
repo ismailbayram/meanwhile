@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-waitgame"
+name = "claude-meanwhile"
 version = "0.2.0"
 description = "Play a quiz about your own repository while your coding agent works"
 readme = "README.md"
@@ -12,20 +12,20 @@ license = { text = "MIT" }
 dependencies = ["textual>=0.80"]
 
 [project.scripts]
-waitgame = "waitgame.cli:main"
-claude-waitgame = "waitgame.cli:main"
+meanwhile = "meanwhile.cli:main"
+claude-meanwhile = "meanwhile.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/waitgame"]
-# Both non-Python files `waitgame` reads at runtime. Named explicitly so
+packages = ["src/meanwhile"]
+# Both non-Python files `meanwhile` reads at runtime. Named explicitly so
 # neither can fall out of the wheel silently: the hook script would leave
-# `waitgame hooks install` copying nothing, and build_prompt.md would leave
-# `waitgame build-prompt` raising FileNotFoundError for anyone who installed
+# `meanwhile hooks install` copying nothing, and build_prompt.md would leave
+# `meanwhile build-prompt` raising FileNotFoundError for anyone who installed
 # from PyPI instead of a checkout.
-artifacts = ["src/waitgame/waitgame-state.sh", "src/waitgame/build_prompt.md"]
+artifacts = ["src/meanwhile/meanwhile-state.sh", "src/meanwhile/build_prompt.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

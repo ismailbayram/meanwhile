@@ -3,4 +3,4 @@ __pycache__/
 .pytest_cache/
 dist/
 .venv/
-.waitgame/scores.json
+.meanwhile/scores.json

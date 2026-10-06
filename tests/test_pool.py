@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from waitgame import pool as pool_mod
+from meanwhile import pool as pool_mod
 
 GOOD = {
     "builtAt": "2026-08-28",

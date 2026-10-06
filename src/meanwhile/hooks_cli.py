@@ -1,4 +1,4 @@
-"""Register waitgame's busy/idle hooks with an agent that has no plugin system.
+"""Register meanwhile's busy/idle hooks with an agent that has no plugin system.
 
 Claude Code gets these two hooks from the plugin; Codex and Cursor expose the
 same two moments and have no plugin mechanism, so somebody has to write the
@@ -22,7 +22,7 @@ from pathlib import Path
 
 from .agents import AGENTS, Agent, merge, registered_commands, unmerge
 
-SCRIPT_NAME = "waitgame-state.sh"
+SCRIPT_NAME = "meanwhile-state.sh"
 
 #: Agents whose project-scope config file has no gitignored sibling to move to,
 #: so the registration we write there is one the user is likely to commit.
@@ -50,7 +50,7 @@ class HooksError(Exception):
 def packaged_script() -> Path:
     """The copy of the hook script that ships inside the wheel.
 
-    A second copy lives at `hooks/waitgame-state.sh` for the plugin, which can
+    A second copy lives at `hooks/meanwhile-state.sh` for the plugin, which can
     only name its own file through ${CLAUDE_PLUGIN_ROOT}. The two are held
     byte-identical by a test.
     """
@@ -65,7 +65,7 @@ def installed_script(home: str | Path | None = None) -> Path:
     there would quietly stop writing the state file.
     """
     base = Path.home() if home is None else Path(home)
-    return base / ".waitgame" / SCRIPT_NAME
+    return base / ".meanwhile" / SCRIPT_NAME
 
 
 #: The default of `installed_script`, spelled out for callers that only need
@@ -121,7 +121,7 @@ def _write_document(path: Path, document: dict) -> None:
     as the hook script next door writes the state file.
     """
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_name(f"{path.name}.waitgame.tmp")
+    tmp = path.with_name(f"{path.name}.meanwhile.tmp")
     try:
         tmp.write_text(json.dumps(document, indent=2) + "\n", encoding="utf-8")
         os.replace(tmp, path)
@@ -182,7 +182,7 @@ def install(agent: Agent, repo: str | Path, home: str | Path, user: bool = False
             f"{agent.label} runs user-level hooks from ~/{Path(agent.user_relpath).parts[0]}/, "
             "but the script keys the state file on its working directory — a user-level "
             "registration would key the wrong directory and never wake the pane. "
-            f"Install it per project instead: waitgame hooks install --agent {agent.slug}"
+            f"Install it per project instead: meanwhile hooks install --agent {agent.slug}"
         )
     # Read and validate before copying anything: a refused install must leave
     # no trace, and the script copy is a write like any other.

@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from waitgame import state
+from meanwhile import state
 
 
 def run_hook(home, project, status, agent=None, check=True):
@@ -22,7 +22,7 @@ def run_hook(home, project, status, agent=None, check=True):
     )
 
 ROOT = Path(__file__).resolve().parents[1]
-HOOK = ROOT / "hooks" / "waitgame-state.sh"
+HOOK = ROOT / "hooks" / "meanwhile-state.sh"
 HOOKS_JSON = ROOT / "hooks" / "hooks.json"
 HOOK_ENV = {"PATH": "/usr/bin:/bin:/usr/local/bin"}
 
@@ -78,8 +78,8 @@ def test_bash_hook_and_python_agree_on_the_key(tmp_path, monkeypatch):
         check=True,
     )
 
-    written = home / ".waitgame" / "state" / f"{state.project_key(project)}.json"
-    assert written.exists(), f"hook wrote a different key; found {list((home / '.waitgame' / 'state').iterdir())}"
+    written = home / ".meanwhile" / "state" / f"{state.project_key(project)}.json"
+    assert written.exists(), f"hook wrote a different key; found {list((home / '.meanwhile' / 'state').iterdir())}"
     assert json.loads(written.read_text())["status"] == "busy"
 
 
@@ -91,7 +91,7 @@ def test_hook_and_cli_agree_when_claude_starts_below_the_git_root(tmp_path):
     test_bash_hook_and_python_agree_on_the_key hands both sides the same path,
     so it cannot see this divergence.
     """
-    from waitgame import cli
+    from meanwhile import cli
 
     home = tmp_path / "home"
     home.mkdir()
@@ -111,7 +111,7 @@ def test_hook_and_cli_agree_when_claude_starts_below_the_git_root(tmp_path):
         check=True,
     )
 
-    state_root = home / ".waitgame" / "state"
+    state_root = home / ".meanwhile" / "state"
     polled = state.state_path(cli.launch_dir(subdir), root=state_root)
     assert polled.exists(), f"CLI polls {polled.name}; hook wrote {[p.name for p in state_root.iterdir()]}"
     assert state.read_state(cli.launch_dir(subdir), root=state_root)["status"] == "busy"
@@ -145,7 +145,7 @@ def test_the_hook_keys_on_its_working_directory_when_the_env_var_is_unset(tmp_pa
         check=True,
     )
 
-    state_root = home / ".waitgame" / "state"
+    state_root = home / ".meanwhile" / "state"
     written = state.state_path(project, root=state_root)
     assert written.exists(), (
         f"python keys {project} as {written.name}; hook wrote "
@@ -184,7 +184,7 @@ def test_bash_hook_and_python_agree_on_a_directory_that_does_not_exist(tmp_path,
         check=True,
     )
 
-    state_root = home / ".waitgame" / "state"
+    state_root = home / ".meanwhile" / "state"
     written = state.state_path(missing, root=state_root)
     assert written.exists(), (
         f"python keys {missing!r} as {written.name}; hook wrote "
@@ -213,7 +213,7 @@ def test_hook_refuses_a_status_it_does_not_understand(tmp_path, argv):
     # A UserPromptSubmit hook's stdout is injected into Claude's context.
     assert result.stdout == b""
     assert b"busy" in result.stderr and b"idle" in result.stderr
-    assert not (home / ".waitgame").exists()  # and nothing was written
+    assert not (home / ".meanwhile").exists()  # and nothing was written
 
 
 def test_every_hook_registration_passes_a_status_the_hook_accepts(tmp_path):
@@ -230,7 +230,7 @@ def test_every_hook_registration_passes_a_status_the_hook_accepts(tmp_path):
 
     for index, command in enumerate(commands):
         script, *args = shlex.split(command)
-        assert script.endswith("/hooks/waitgame-state.sh"), f"unexpected script: {script}"
+        assert script.endswith("/hooks/meanwhile-state.sh"), f"unexpected script: {script}"
         assert len(args) == 2, f"{command!r} passes {len(args)} arguments, not status and agent"
 
         home = tmp_path / f"home{index}"
@@ -246,7 +246,7 @@ def test_every_hook_registration_passes_a_status_the_hook_accepts(tmp_path):
         # Not `in ("busy", "idle")`: read_state answers "idle" for a missing
         # file too, so that would have passed the Stop registration even if the
         # hook had written nothing at all.
-        root = home / ".waitgame" / "state"
+        root = home / ".meanwhile" / "state"
         assert state.state_path(tmp_path, root=root).exists(), f"{command!r} wrote no state file"
         read = state.read_state(tmp_path, root=root)
         assert read["status"] == args[0]
@@ -284,7 +284,7 @@ def test_bash_hook_and_python_agree_on_dot_dot_after_a_symlink(tmp_path, tail):
         check=True,
     )
 
-    state_root = home / ".waitgame" / "state"
+    state_root = home / ".meanwhile" / "state"
     written = state.state_path(project, root=state_root)
     assert written.exists(), (
         f"python keys {project!r} as {written.name}; hook wrote "
@@ -332,7 +332,7 @@ def test_the_hook_writes_the_agent_slug(tmp_path):
     project = tmp_path / "project"
     project.mkdir()
     run_hook(home, project, "busy", "cursor")
-    written = home / ".waitgame" / "state" / f"{state.project_key(project)}.json"
+    written = home / ".meanwhile" / "state" / f"{state.project_key(project)}.json"
     assert json.loads(written.read_text())["agent"] == "cursor"
 
 
@@ -343,7 +343,7 @@ def test_the_hook_refuses_a_malformed_agent_slug(tmp_path):
     project.mkdir()
     result = run_hook(home, project, "busy", "Not A Slug", check=False)
     assert result.returncode != 0
-    assert not (home / ".waitgame" / "state").exists()
+    assert not (home / ".meanwhile" / "state").exists()
 
 
 def test_the_hook_rejects_agent_with_embedded_newline(tmp_path):
@@ -353,7 +353,7 @@ def test_the_hook_rejects_agent_with_embedded_newline(tmp_path):
     project.mkdir()
     result = run_hook(home, project, "busy", "cursor\nbad", check=False)
     assert result.returncode != 0
-    assert not (home / ".waitgame" / "state").exists()
+    assert not (home / ".meanwhile" / "state").exists()
 
 
 def test_the_hook_rejects_agent_with_json_injection(tmp_path):
@@ -363,7 +363,7 @@ def test_the_hook_rejects_agent_with_json_injection(tmp_path):
     project.mkdir()
     result = run_hook(home, project, "busy", 'cursor\n","injected":"pwned', check=False)
     assert result.returncode != 0
-    assert not (home / ".waitgame" / "state").exists()
+    assert not (home / ".meanwhile" / "state").exists()
 
 
 def test_write_state_rejects_agent_with_trailing_newline(tmp_path):
@@ -379,7 +379,7 @@ def test_hook_refusal_does_not_clobber_existing_state(tmp_path):
 
     # Write a good state file first
     run_hook(home, project, "busy", "claude")
-    written = home / ".waitgame" / "state" / f"{state.project_key(project)}.json"
+    written = home / ".meanwhile" / "state" / f"{state.project_key(project)}.json"
     good_content = written.read_text()
     good_data = json.loads(good_content)
     assert good_data["status"] == "busy"

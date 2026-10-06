@@ -1,4 +1,4 @@
-"""The interface's six strings, in the languages waitgame ships.
+"""The interface's six strings, in the languages meanwhile ships.
 
 A dictionary, deliberately, and not an i18n framework: there is no catalog to
 extract, no compilation step and no locale negotiation. The cards themselves

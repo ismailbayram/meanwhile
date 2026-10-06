@@ -2,7 +2,7 @@ import subprocess
 
 import pytest
 
-from waitgame import repo
+from meanwhile import repo
 
 
 def git(cwd, *args):

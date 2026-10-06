@@ -1,9 +1,9 @@
 """The plugin's non-Python surface: the build prompt and the two manifests.
 
-`src/waitgame/build_prompt.md` is what an LLM follows to write pool.json, so
-its example is a contract with `waitgame.pool.load_pool`. It is also the one
-place that text lives: `commands/waitgame-build.md` is a thin wrapper that
-points Claude Code at it, and `waitgame build-prompt` prints it for any other
+`src/meanwhile/build_prompt.md` is what an LLM follows to write pool.json, so
+its example is a contract with `meanwhile.pool.load_pool`. It is also the one
+place that text lives: `commands/meanwhile-build.md` is a thin wrapper that
+points Claude Code at it, and `meanwhile build-prompt` prints it for any other
 agent. Nothing else checks the example, and a mismatch would only surface in
 a user's first (paid-for) build.
 """
@@ -15,13 +15,13 @@ from pathlib import Path
 
 import pytest
 
-import waitgame
-from waitgame import cli
-from waitgame.pool import QuizItem, load_pool
+import meanwhile
+from meanwhile import cli
+from meanwhile.pool import QuizItem, load_pool
 
 ROOT = Path(__file__).resolve().parents[1]
-BUILD_COMMAND = ROOT / "commands" / "waitgame-build.md"
-PROMPT_SOURCE = ROOT / "src" / "waitgame" / "build_prompt.md"
+BUILD_COMMAND = ROOT / "commands" / "meanwhile-build.md"
+PROMPT_SOURCE = ROOT / "src" / "meanwhile" / "build_prompt.md"
 PLUGIN_MANIFEST = ROOT / ".claude-plugin" / "plugin.json"
 MARKETPLACE_MANIFEST = ROOT / ".claude-plugin" / "marketplace.json"
 PYPROJECT = ROOT / "pyproject.toml"
@@ -146,7 +146,7 @@ def test_every_version_in_the_repository_agrees():
 
     versions = {
         "pyproject.toml": pyproject.group(1),
-        "waitgame.__version__": waitgame.__version__,
+        "meanwhile.__version__": meanwhile.__version__,
         "plugin.json": plugin["version"],
         "marketplace.json": marketplace["plugins"][0]["version"],
     }

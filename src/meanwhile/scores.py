@@ -8,7 +8,7 @@ from pathlib import Path
 
 from .game import Session
 
-SCORES_RELPATH = ".waitgame/scores.json"
+SCORES_RELPATH = ".meanwhile/scores.json"
 _ZERO = {"answered": 0, "correct": 0, "best_streak": 0}
 
 

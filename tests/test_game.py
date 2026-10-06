@@ -2,8 +2,8 @@ import random
 
 import pytest
 
-from waitgame import game
-from waitgame.pool import Pool, QuizItem
+from meanwhile import game
+from meanwhile.pool import Pool, QuizItem
 
 QUIZ = QuizItem(
     q="What is passport_groups for?",

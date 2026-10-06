@@ -1,4 +1,4 @@
-"""The terminal UI. Renders cards; all rules live in waitgame.game."""
+"""The terminal UI. Renders cards; all rules live in meanwhile.game."""
 
 from __future__ import annotations
 
@@ -19,9 +19,9 @@ PLAYING = "playing"
 DONE = "done"
 
 
-class WaitgameApp(App):
+class MeanwhileApp(App):
     CSS_PATH = "app.tcss"
-    TITLE = "waitgame"
+    TITLE = "meanwhile"
 
     # Every key the game can ever offer is declared here, statically. Which of
     # them the footer actually shows is decided per card by `check_action`.

@@ -1,4 +1,4 @@
-"""`waitgame hooks`: writing the busy/idle registration into an agent's config.
+"""`meanwhile hooks`: writing the busy/idle registration into an agent's config.
 
 Every failure mode here is silent. A registration written to the wrong path,
 naming the wrong event, or pointing at a script that has moved raises nothing
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from waitgame import agents, cli, hooks_cli
+from meanwhile import agents, cli, hooks_cli
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -36,7 +36,7 @@ def test_install_writes_the_config_and_the_script(sandbox, slug):
     agent = agents.agent_by_slug(slug)
     hooks_cli.install(agent, repo=repo, home=home)
 
-    script = home / ".waitgame" / "waitgame-state.sh"
+    script = home / ".meanwhile" / "meanwhile-state.sh"
     assert script.read_text() == hooks_cli.packaged_script().read_text()
     assert os.stat(script).st_mode & stat.S_IXUSR
 
@@ -72,7 +72,7 @@ def test_cursor_refuses_user_scope(sandbox):
     with pytest.raises(hooks_cli.HooksError) as excinfo:
         hooks_cli.install(agents.agent_by_slug("cursor"), repo=repo, home=home, user=True)
     assert "project" in str(excinfo.value).lower()
-    assert not (home / ".waitgame").exists()
+    assert not (home / ".meanwhile").exists()
 
 
 def test_uninstall_removes_only_ours(sandbox):
@@ -133,7 +133,7 @@ def test_the_plugin_note_is_only_on_the_not_installed_line(sandbox):
 def test_status_reports_a_stale_script_copy(sandbox):
     repo, home = sandbox
     hooks_cli.install(agents.agent_by_slug("codex"), repo=repo, home=home)
-    (home / ".waitgame" / "waitgame-state.sh").write_text("#!/bin/sh\n# an old copy\n")
+    (home / ".meanwhile" / "meanwhile-state.sh").write_text("#!/bin/sh\n# an old copy\n")
     assert any("stale" in line for line in hooks_cli.status(repo=repo, home=home))
 
 
@@ -173,26 +173,26 @@ def test_the_registered_command_is_one_the_hook_accepts(sandbox, slug):
 
 
 def test_the_packaged_script_matches_the_plugin_copy():
-    """Two copies ship: the plugin runs `hooks/waitgame-state.sh`, `hooks
+    """Two copies ship: the plugin runs `hooks/meanwhile-state.sh`, `hooks
     install` copies the packaged one. If they ever drift, a Codex user runs one
     version of the hook and a Claude Code user another, and nothing else
     anywhere would say so."""
-    assert hooks_cli.packaged_script().read_bytes() == (ROOT / "hooks" / "waitgame-state.sh").read_bytes()
+    assert hooks_cli.packaged_script().read_bytes() == (ROOT / "hooks" / "meanwhile-state.sh").read_bytes()
 
 
 def test_the_plugin_registration_still_points_at_the_plugin_copy():
     """The packaged copy is for `hooks install`; the plugin keeps using its own,
     because ${CLAUDE_PLUGIN_ROOT} is the only path it can name."""
     text = (ROOT / "hooks" / "hooks.json").read_text(encoding="utf-8")
-    assert "${CLAUDE_PLUGIN_ROOT}/hooks/waitgame-state.sh" in text
+    assert "${CLAUDE_PLUGIN_ROOT}/hooks/meanwhile-state.sh" in text
 
 
 def test_the_default_installed_script_is_the_copy_under_the_home_directory():
     """Not the packaged file: under `uvx` the package lives in a cache
     directory that can be reclaimed, and a registration pointing there would
     quietly stop writing."""
-    assert hooks_cli.INSTALLED_SCRIPT == Path.home() / ".waitgame" / "waitgame-state.sh"
-    assert hooks_cli.installed_script("/somewhere") == Path("/somewhere/.waitgame/waitgame-state.sh")
+    assert hooks_cli.INSTALLED_SCRIPT == Path.home() / ".meanwhile" / "meanwhile-state.sh"
+    assert hooks_cli.installed_script("/somewhere") == Path("/somewhere/.meanwhile/meanwhile-state.sh")
 
 
 # --- refusals -----------------------------------------------------------------
@@ -213,7 +213,7 @@ def test_a_malformed_config_is_refused_not_overwritten(sandbox):
     assert str(path) in str(excinfo.value)
     assert path.read_text() == '{"model": "opus",}'
     # And nothing at all was written: the script copy is a write like any other.
-    assert not (home / ".waitgame").exists()
+    assert not (home / ".meanwhile").exists()
 
 
 def test_a_config_that_is_not_an_object_is_refused(sandbox):
@@ -230,7 +230,7 @@ def test_a_config_that_is_not_an_object_is_refused(sandbox):
 def test_status_reports_a_missing_script_copy(sandbox):
     repo, home = sandbox
     hooks_cli.install(agents.agent_by_slug("codex"), repo=repo, home=home)
-    (home / ".waitgame" / "waitgame-state.sh").unlink()
+    (home / ".meanwhile" / "meanwhile-state.sh").unlink()
     assert any("stale" in line for line in hooks_cli.status(repo=repo, home=home))
 
 

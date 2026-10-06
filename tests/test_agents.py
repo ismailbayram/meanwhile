@@ -5,9 +5,9 @@ import subprocess
 
 import pytest
 
-from waitgame import agents
+from meanwhile import agents
 
-SCRIPT = "/home/x/.waitgame/waitgame-state.sh"
+SCRIPT = "/home/x/.meanwhile/meanwhile-state.sh"
 
 
 def test_every_agent_has_a_distinct_slug_and_a_label():
@@ -87,7 +87,7 @@ def test_merging_twice_does_not_duplicate(slug):
 @pytest.mark.parametrize("slug", ["claude", "codex", "cursor"])
 def test_merging_a_new_script_path_replaces_the_old_entry(slug):
     agent = agents.agent_by_slug(slug)
-    old = agents.merge({}, agent, "/old/waitgame-state.sh")
+    old = agents.merge({}, agent, "/old/meanwhile-state.sh")
     new = agents.merge(old, agent, SCRIPT)
     commands = agents.registered_commands(new, agent)
     assert len(commands) == 2
@@ -116,7 +116,7 @@ def test_merge_preserves_foreign_hooks_in_the_same_entry(slug):
     When we merge, we strip our stale command but keep the foreign one and the matcher.
     """
     agent = agents.agent_by_slug(slug)
-    # An entry with a foreign command and a stale waitgame command under one matcher
+    # An entry with a foreign command and a stale meanwhile command under one matcher
     theirs = {
         "hooks": {
             agent.busy_event: [
@@ -124,7 +124,7 @@ def test_merge_preserves_foreign_hooks_in_the_same_entry(slug):
                     "matcher": "some-condition",
                     "hooks": [
                         {"type": "command", "command": "their-command.sh", "timeout": 5},
-                        {"type": "command", "command": "/old/waitgame-state.sh busy claude", "timeout": 5},
+                        {"type": "command", "command": "/old/meanwhile-state.sh busy claude", "timeout": 5},
                     ],
                 }
             ]
@@ -229,10 +229,10 @@ def test_an_event_whose_value_is_not_an_array_is_not_thrown_away():
 @pytest.mark.parametrize(
     "hostile",
     [
-        '/home/o"neill/.waitgame/waitgame-state.sh',
-        "/home/$USER/.waitgame/waitgame-state.sh",
-        "/home/`whoami`/.waitgame/waitgame-state.sh",
-        "/home/a b/.waitgame/waitgame-state.sh",
+        '/home/o"neill/.meanwhile/meanwhile-state.sh',
+        "/home/$USER/.meanwhile/meanwhile-state.sh",
+        "/home/`whoami`/.meanwhile/meanwhile-state.sh",
+        "/home/a b/.meanwhile/meanwhile-state.sh",
     ],
 )
 def test_a_home_directory_the_shell_would_mangle_is_quoted(hostile):
@@ -249,7 +249,7 @@ def test_the_shell_really_runs_a_hostile_path_unchanged(tmp_path):
     """`shlex.split` is our reading of the quoting; this is the shell's."""
     home = tmp_path / 'o"neill $HOME `whoami`'
     home.mkdir()
-    script = home / "waitgame-state.sh"
+    script = home / "meanwhile-state.sh"
     script.write_text('#!/usr/bin/env bash\nprintf "%s\\n" "$0" "$1" "$2"\n')
     script.chmod(0o755)
 

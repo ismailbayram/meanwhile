@@ -1,5 +1,5 @@
-from waitgame import scores
-from waitgame.game import Session
+from meanwhile import scores
+from meanwhile.game import Session
 
 
 def test_missing_file_reads_as_zeroes(tmp_path):
@@ -7,7 +7,7 @@ def test_missing_file_reads_as_zeroes(tmp_path):
 
 
 def test_corrupt_file_reads_as_zeroes(tmp_path):
-    (tmp_path / ".waitgame").mkdir()
+    (tmp_path / ".meanwhile").mkdir()
     (tmp_path / scores.SCORES_RELPATH).write_text("nonsense")
     assert scores.load_scores(tmp_path) == {"answered": 0, "correct": 0, "best_streak": 0}
 

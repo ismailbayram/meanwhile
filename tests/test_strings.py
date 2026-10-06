@@ -1,6 +1,6 @@
 import pytest
 
-from waitgame import strings
+from meanwhile import strings
 
 
 @pytest.mark.parametrize("language", ["en", "tr"])

@@ -1,4 +1,4 @@
-Build `.waitgame/pool.json` for the current repository.
+Build `.meanwhile/pool.json` for the current repository.
 
 ## What to read
 
@@ -22,7 +22,7 @@ get written in that language and the interface stays English.
 
 ## What to write
 
-Write `.waitgame/pool.json` with 30-50 `quiz` items, using exactly this shape:
+Write `.meanwhile/pool.json` with 30-50 `quiz` items, using exactly this shape:
 
     {
       "builtAt": "<today, YYYY-MM-DD>",
@@ -45,7 +45,7 @@ Rules:
 
 - Never invent code. Every question must be grounded in a file that exists.
 - **Never take a question or an answer from a secret file.**
-  `.waitgame/pool.json` is committed and shared with the whole team, so
+  `.meanwhile/pool.json` is committed and shared with the whole team, so
   anything copied into it is published. Skip `.env` and any `.env.*`,
   credential/key/token/certificate files (`*.pem`, `*.key`, `id_rsa`,
   `credentials*`, `secrets*`), fixtures holding real keys, and **any file
@@ -56,9 +56,9 @@ Rules:
 
 ## Finish
 
-1. Ensure `.waitgame/scores.json` is in `.gitignore`; add it if missing.
-2. Run `uvx claude-waitgame validate --repo .` (during development, from a
-   checkout of this plugin: `uv run waitgame validate --repo .`) and fix
+1. Ensure `.meanwhile/scores.json` is in `.gitignore`; add it if missing.
+2. Run `uvx claude-meanwhile validate --repo .` (during development, from a
+   checkout of this plugin: `uv run meanwhile validate --repo .`) and fix
    anything it reports.
-3. Tell the user the item count and that `.waitgame/pool.json` is ready to
+3. Tell the user the item count and that `.meanwhile/pool.json` is ready to
    commit so their team shares the pool.

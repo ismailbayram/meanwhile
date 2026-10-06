@@ -1,4 +1,4 @@
-"""Which agents waitgame can hook into, and how each one registers hooks.
+"""Which agents meanwhile can hook into, and how each one registers hooks.
 
 The busy/idle signal is not Claude-specific: Codex and Cursor expose the same
 two moments under their own names, and the same bash script serves all three.
@@ -16,7 +16,7 @@ from dataclasses import dataclass
 #: How our entries are recognised inside somebody else's config file. Matching
 #: on the script name rather than on an exact command string is what lets
 #: `merge` replace an entry that points at an older copy of the script.
-MARKER = "waitgame-state.sh"
+MARKER = "meanwhile-state.sh"
 
 SLUG_PATTERN = re.compile(r"^[a-z][a-z-]{0,15}\Z")
 

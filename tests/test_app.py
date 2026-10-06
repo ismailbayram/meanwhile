@@ -5,10 +5,10 @@ from textual.app import App
 from textual.binding import Binding
 from textual.widgets import Footer
 
-from waitgame import game, scores, state, strings
-from waitgame.app import DONE, PLAYING, WAITING, WaitgameApp
-from waitgame.pool import Pool, QuizItem
-from waitgame.scores import SCORES_RELPATH
+from meanwhile import game, scores, state, strings
+from meanwhile.app import DONE, PLAYING, WAITING, MeanwhileApp
+from meanwhile.pool import Pool, QuizItem
+from meanwhile.scores import SCORES_RELPATH
 
 pytestmark = pytest.mark.asyncio
 
@@ -24,7 +24,7 @@ NARROW = QuizItem(q="Two?", choices=["a", "b"], answer=0, why="Because a.", sour
 
 def app_for(items, status="busy", tmp_path=None, banner="", language="en", agent_source=lambda: None):
     pool = Pool(built_at="2026-08-28", head_sha="abc", repo="demo", items=list(items))
-    return WaitgameApp(
+    return MeanwhileApp(
         pool=pool,
         repo_dir=tmp_path,
         status_source=lambda: status,
@@ -118,7 +118,7 @@ async def test_out_of_range_choice_is_ignored(tmp_path):
 
 async def test_space_advances_to_the_next_card(tmp_path):
     # Two copies of QUIZ, not [QUIZ, NARROW]: game.start_session shuffles with
-    # an unseeded random.Random() and WaitgameApp's constructor has no way to
+    # an unseeded random.Random() and MeanwhileApp's constructor has no way to
     # inject a seed, so a pool of differently-shaped cards makes this test
     # flaky — "2" is only a valid answer key when the wider card lands first.
     # See tests/test_game.py's own test_wrong_quiz_answer_... for the same
@@ -144,7 +144,7 @@ async def test_the_poll_interval_is_wired(tmp_path):
     nobody calls _poll_status here."""
     status = {"value": "busy"}
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=[QUIZ])
-    app = WaitgameApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=0.01)
+    app = MeanwhileApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=0.01)
     async with app.run_test() as pilot:
         await pilot.pause()
         status["value"] = "idle"
@@ -155,7 +155,7 @@ async def test_the_poll_interval_is_wired(tmp_path):
 async def test_going_idle_freezes_the_card_and_says_claude_is_done(tmp_path):
     status = {"value": "busy"}
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=[QUIZ])
-    app = WaitgameApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=60)
+    app = MeanwhileApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=60)
     async with app.run_test() as pilot:
         await pilot.pause()
         status["value"] = "idle"
@@ -172,7 +172,7 @@ async def test_going_idle_freezes_the_card_and_says_claude_is_done(tmp_path):
 async def test_going_idle_persists_the_session_to_scores_json(tmp_path):
     status = {"value": "busy"}
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=[QUIZ])
-    app = WaitgameApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=60)
+    app = MeanwhileApp(pool=pool, repo_dir=tmp_path, status_source=lambda: status["value"], poll_seconds=60)
     async with app.run_test() as pilot:
         await pilot.press("2")
         await pilot.pause()
@@ -193,7 +193,7 @@ async def test_going_idle_persists_the_session_to_scores_json(tmp_path):
 async def test_going_idle_with_no_repo_dir_does_not_write_or_raise(tmp_path):
     status = {"value": "busy"}
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=[QUIZ])
-    app = WaitgameApp(pool=pool, repo_dir=None, status_source=lambda: status["value"], poll_seconds=60)
+    app = MeanwhileApp(pool=pool, repo_dir=None, status_source=lambda: status["value"], poll_seconds=60)
     async with app.run_test() as pilot:
         await pilot.press("2")
         await pilot.pause()
@@ -214,7 +214,7 @@ def lifecycle_app(items, status, tmp_path, poll_seconds=60):
     # poll_seconds=60: long enough that the interval never fires inside a test,
     # so the only polls are the explicit `poll(app)` calls.
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=list(items))
-    return WaitgameApp(
+    return MeanwhileApp(
         pool=pool,
         repo_dir=tmp_path,
         status_source=lambda: status["value"],
@@ -229,7 +229,7 @@ async def test_launching_while_idle_with_no_state_file_waits(tmp_path):
     empty_state_root = tmp_path / "no-state-here"  # the hooks have never run
 
     pool = Pool(built_at="x", head_sha="abc", repo="demo", items=[QUIZ])
-    app = WaitgameApp(
+    app = MeanwhileApp(
         pool=pool,
         repo_dir=tmp_path,
         status_source=lambda: state.read_state(project, root=empty_state_root)["status"],

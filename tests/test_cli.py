@@ -3,7 +3,7 @@ import sys
 
 import pytest
 
-from waitgame import cli, strings
+from meanwhile import cli, strings
 
 POOL = {
     "builtAt": "2026-08-28",
@@ -23,8 +23,8 @@ POOL = {
 
 
 def seed(tmp_path, pool=POOL, source_exists=True):
-    (tmp_path / ".waitgame").mkdir(parents=True, exist_ok=True)
-    (tmp_path / ".waitgame" / "pool.json").write_text(json.dumps(pool), encoding="utf-8")
+    (tmp_path / ".meanwhile").mkdir(parents=True, exist_ok=True)
+    (tmp_path / ".meanwhile" / "pool.json").write_text(json.dumps(pool), encoding="utf-8")
     if source_exists:
         (tmp_path / "real.py").write_text("x = 1", encoding="utf-8")
     return tmp_path
@@ -75,17 +75,17 @@ def test_validate_reports_a_structurally_broken_pool(tmp_path):
 def test_main_reports_a_missing_pool_without_launching_the_ui(tmp_path, capsys):
     code = cli.main(["--repo", str(tmp_path)])
     assert code == 1
-    assert "/waitgame-build" in capsys.readouterr().out
+    assert "/meanwhile-build" in capsys.readouterr().out
 
 
 def test_the_missing_pool_message_names_a_route_for_every_agent(tmp_path, capsys):
-    """`/waitgame-build` is a Claude Code slash command and does not exist for
+    """`/meanwhile-build` is a Claude Code slash command and does not exist for
     a Codex or Cursor user — who is the likeliest person to hit this message,
     since opening the pane before building a pool is the obvious first-run
     mistake on those paths."""
     cli.main(["--repo", str(tmp_path)])
     out = capsys.readouterr().out
-    assert "/waitgame-build" in out
+    assert "/meanwhile-build" in out
     assert "build-prompt" in out
 
 
@@ -93,7 +93,7 @@ def test_the_lang_help_asks_for_a_code_and_names_the_two_that_ship(monkeypatch, 
     """Nothing on the documented path used to spell `tr` or `en` out, so a user
     reading "interface language" passed a language *name* and got an English
     interface with no complaint."""
-    monkeypatch.setattr(sys, "argv", ["/usr/local/bin/waitgame", "--help"])
+    monkeypatch.setattr(sys, "argv", ["/usr/local/bin/meanwhile", "--help"])
     with pytest.raises(SystemExit):
         cli.main(["--help"])
 
@@ -160,7 +160,7 @@ def test_without_lang_the_pool_language_is_used(tmp_path, monkeypatch):
     assert captured["language"] == "tr"
 
 
-@pytest.mark.parametrize("invoked_as", ["waitgame", "claude-waitgame"])
+@pytest.mark.parametrize("invoked_as", ["meanwhile", "claude-meanwhile"])
 def test_help_names_the_command_it_was_invoked_as(invoked_as, monkeypatch, capsys):
     """Both console scripts point at cli.main, so a hardcoded prog= would make
     one of them advertise the other's name."""

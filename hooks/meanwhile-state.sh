@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Writes waitgame's busy/idle state file. Invoked by the coding agent's hooks
+# Writes meanwhile's busy/idle state file. Invoked by the coding agent's hooks
 # (Claude Code, Codex, Cursor).
 # Pure bash on purpose: this runs on every prompt submit and must be instant.
 set -euo pipefail
@@ -8,7 +8,7 @@ set -euo pipefail
 # drain it so the writing end never blocks on a full pipe.
 cat >/dev/null 2>&1 || true
 
-# Only the two statuses waitgame.state understands. Anything else — a typo in
+# Only the two statuses meanwhile.state understands. Anything else — a typo in
 # hooks.json, say — would be written verbatim and then silently read back as
 # "idle", so refuse it loudly instead. stdout stays empty on purpose: a
 # prompt-submit hook's stdout is injected into the agent's context.
@@ -16,7 +16,7 @@ status="${1:-}"
 case "$status" in
   busy | idle) ;;
   *)
-    printf 'waitgame-state.sh: status must be "busy" or "idle", got %s\n' \
+    printf 'meanwhile-state.sh: status must be "busy" or "idle", got %s\n' \
       "${status:-<missing>}" >&2
     exit 1
     ;;
@@ -26,12 +26,12 @@ esac
 # interpolated blind — this string ends up inside a JSON document.
 agent="${2:-}"
 if [ -n "$agent" ] && ! [[ "$agent" =~ ^[a-z][a-z-]{0,15}$ ]]; then
-  printf 'waitgame-state.sh: agent must match ^[a-z][a-z-]{0,15}$, got %s\n' "$agent" >&2
+  printf 'meanwhile-state.sh: agent must match ^[a-z][a-z-]{0,15}$, got %s\n' "$agent" >&2
   exit 1
 fi
 
 # Normalize to match Python's Path(project_dir).resolve() (see
-# waitgame.state.project_key): resolve symlinks and collapse "." / ".." and
+# meanwhile.state.project_key): resolve symlinks and collapse "." / ".." and
 # relative or trailing-slash forms to one canonical absolute path. `pwd -P`
 # only works on a directory that exists, and resolve() normalizes paths that
 # do not, so resolve the deepest existing ancestor and fold the rest in
@@ -92,7 +92,7 @@ else
   key="$(printf '%s' "$dir" | shasum -a 256 | cut -c1-16)"
 fi
 
-state_dir="$HOME/.waitgame/state"
+state_dir="$HOME/.meanwhile/state"
 mkdir -p "$state_dir"
 tmp="$state_dir/$key.json.tmp.$$"
 if [ -n "$agent" ]; then

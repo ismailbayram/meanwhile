@@ -1,4 +1,4 @@
-"""Command line entry point: `waitgame` plays, `waitgame validate` checks a pool."""
+"""Command line entry point: `meanwhile` plays, `meanwhile validate` checks a pool."""
 
 from __future__ import annotations
 
@@ -14,7 +14,7 @@ from .pool import POOL_RELPATH, PoolError, load_pool
 def launch_dir(start: str | Path) -> Path:
     """The directory the pane was launched in.
 
-    This — not the git root — is the state-file key: hooks/waitgame-state.sh
+    This — not the git root — is the state-file key: hooks/meanwhile-state.sh
     keys on CLAUDE_PROJECT_DIR, which Claude Code sets to the directory the
     session was started in. Keying the TUI on the git root instead would
     silently never meet the hook whenever Claude Code is launched below it
@@ -54,9 +54,9 @@ def build_prompt(language: str, repo_name: str) -> str:
 
     Plain `str.replace`, not `str.format`: the file is a worked JSON example
     full of braces that `.format` would try (and fail) to parse as fields.
-    This is the one copy — `commands/waitgame-build.md` points at it instead
+    This is the one copy — `commands/meanwhile-build.md` points at it instead
     of duplicating it, and `tests/test_plugin_files.py` pins its example to
-    `waitgame.pool.load_pool`.
+    `meanwhile.pool.load_pool`.
     """
     source = Path(__file__).with_name("build_prompt.md").read_text(encoding="utf-8")
     return source.replace("{language}", language).replace("{repo}", repo_name)
@@ -78,13 +78,13 @@ def validate(repo_dir: str | Path) -> tuple[int, list[str]]:
 def main(argv: list[str] | None = None) -> int:
     if argv is None:
         argv = sys.argv[1:]
-    # `hooks` takes the rest of the line for its own parser, so `waitgame
+    # `hooks` takes the rest of the line for its own parser, so `meanwhile
     # hooks install --agent codex` does not have to share flags with `play`.
     if argv and argv[0] == "hooks":
         return run_hooks(argv[1:])
 
-    # No prog=: argparse takes it from sys.argv[0], so `waitgame --help` and
-    # `claude-waitgame --help` each print the name they were invoked by.
+    # No prog=: argparse takes it from sys.argv[0], so `meanwhile --help` and
+    # `claude-meanwhile --help` each print the name they were invoked by.
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "command", nargs="?", default="play", choices=["play", "validate", "build-prompt"]
@@ -106,7 +106,7 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
 
     launch = launch_dir(args.repo)  # keys the busy/idle state file
-    root = repo_root(launch)  # holds .waitgame/pool.json and scores.json
+    root = repo_root(launch)  # holds .meanwhile/pool.json and scores.json
 
     if args.command == "build-prompt":
         # No pool exists yet — the point of this command is to build one —
@@ -126,10 +126,10 @@ def main(argv: list[str] | None = None) -> int:
     except PoolError as exc:
         # Both routes, not just the slash command: a Codex or Cursor user who
         # opens the pane before building a pool is the likeliest first run on
-        # the new paths, and /waitgame-build does not exist for them.
+        # the new paths, and /meanwhile-build does not exist for them.
         print(
-            f"{exc}\n\nRun /waitgame-build inside Claude Code, or "
-            "`waitgame build-prompt` with any other agent, to create one."
+            f"{exc}\n\nRun /meanwhile-build inside Claude Code, or "
+            "`meanwhile build-prompt` with any other agent, to create one."
         )
         return 1
 
@@ -145,14 +145,14 @@ def main(argv: list[str] | None = None) -> int:
 
 
 def _run_app(**kwargs) -> int:
-    from .app import WaitgameApp  # imported late so `validate` needs no terminal
+    from .app import MeanwhileApp  # imported late so `validate` needs no terminal
 
-    WaitgameApp(**kwargs).run()
+    MeanwhileApp(**kwargs).run()
     return 0
 
 
 def run_hooks(argv: list[str]) -> int:
-    """`waitgame hooks install|status|uninstall` — register the busy/idle hooks.
+    """`meanwhile hooks install|status|uninstall` — register the busy/idle hooks.
 
     Claude Code users get these from the plugin; this is for Codex, Cursor and
     a standalone Claude Code.
@@ -162,7 +162,7 @@ def run_hooks(argv: list[str]) -> int:
 
     parser = argparse.ArgumentParser(
         prog=f"{Path(sys.argv[0]).name} hooks",
-        description="register waitgame's busy/idle hooks with a coding agent",
+        description="register meanwhile's busy/idle hooks with a coding agent",
     )
     parser.add_argument("action", choices=["install", "status", "uninstall"])
     parser.add_argument(
