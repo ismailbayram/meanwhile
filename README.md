@@ -8,6 +8,16 @@ that wait with a quiz built entirely from your own repository, so that
 instead of drifting away you stay warmed up on the code you're about to
 review. It works the same way alongside Codex, Cursor and OpenCode.
 
+<p align="center">
+  <img src="docs/images/card.svg" alt="A multiple-choice card about the repository, waiting for an answer" width="720">
+</p>
+
+When the agent finishes, the pane says so and you switch back to the diff:
+
+<p align="center">
+  <img src="docs/images/done.svg" alt="The answered card, with a banner saying Claude Code is done" width="720">
+</p>
+
 ## Install
 
 ### Claude Code
