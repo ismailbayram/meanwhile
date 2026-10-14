@@ -128,6 +128,28 @@ This asks Claude to read the repository — models, routes, the README,
 `CHANGELOG.md`, recent commits — and write `.meanwhile/pool.json`: a set of
 multiple-choice questions drawn from that project's actual code.
 
+For a made-up online shop, one entry in that file might look like this:
+
+```json
+{
+  "type": "quiz",
+  "q": "What happens to an order's reserved stock when payment fails?",
+  "choices": [
+    "It stays reserved until an admin releases it",
+    "It is released back to inventory after 15 minutes",
+    "It is released immediately and the order is cancelled"
+  ],
+  "answer": 1,
+  "why": "release_expired_reservations runs every 15 minutes and returns unpaid stock to inventory.",
+  "source": "shop/orders/tasks.py"
+}
+```
+
+In the pane that becomes the question, its three numbered choices and the
+file it came from. Press `2` and you get `correct` followed by the `why`
+sentence; press `1` or `3` and you get `wrong` followed by the same sentence,
+which is written to explain the right answer.
+
 **Codex, Cursor, OpenCode, or any other agent**: `/meanwhile-build` is a Claude Code
 slash command, so run this instead and paste the printed instructions to
 your agent:
