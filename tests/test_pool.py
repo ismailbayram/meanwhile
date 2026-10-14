@@ -89,7 +89,7 @@ def test_a_pool_containing_mutants_says_how_to_fix_it(tmp_path):
     with pytest.raises(pool_mod.PoolError) as excinfo:
         pool_mod.load_pool(write(tmp_path, bad))
     message = str(excinfo.value)
-    assert "0.2.0" in message
+    assert "mutant" in message
     assert "regenerate" in message.lower()
 
 

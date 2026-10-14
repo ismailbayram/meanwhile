@@ -145,11 +145,6 @@ top-level `language` field (it defaults to `en` when absent); the playing
 interface's own chrome — the waiting banner, "correct"/"wrong", and so on —
 follows that field, in `tr` or `en` and in English for anything else.
 
-A pool built before 0.2.0 that still contains "spot the bug" mutant cards
-fails to load — that card type is gone. The error names 0.2.0 and tells you
-to regenerate the pool; run the build step again to get an all-multiple-choice
-one.
-
 ## Daily use
 
 Open a second terminal pane next to the one running your agent — a tmux

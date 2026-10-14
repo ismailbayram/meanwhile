@@ -86,7 +86,7 @@ def load_pool(path: str | Path) -> Pool:
             items.append(_quiz(entry, where))
         elif kind == "mutant":
             raise PoolError(
-                f"{where}: mutant cards were removed in 0.2.0 — "
+                f"{where}: mutant cards are no longer supported — "
                 "regenerate this pool with the build command"
             )
         else:
