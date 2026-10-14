@@ -3,17 +3,22 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "claude-meanwhile"
-version = "0.2.0"
+name = "meanwhile-cli"
+version = "0.3.0"
 description = "Play a quiz about your own repository while your coding agent works"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 dependencies = ["textual>=0.80"]
 
+[project.urls]
+Homepage = "https://github.com/ismailbayram/meanwhile"
+Repository = "https://github.com/ismailbayram/meanwhile"
+
 [project.scripts]
 meanwhile = "meanwhile.cli:main"
-claude-meanwhile = "meanwhile.cli:main"
+# Named after the package, so `uvx meanwhile-cli` finds a command to run.
+meanwhile-cli = "meanwhile.cli:main"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
@@ -26,6 +31,23 @@ packages = ["src/meanwhile"]
 # `meanwhile build-prompt` raising FileNotFoundError for anyone who installed
 # from PyPI instead of a checkout.
 artifacts = ["src/meanwhile/meanwhile-state.sh", "src/meanwhile/build_prompt.md"]
+
+[tool.hatch.build.targets.sdist]
+# An allowlist, not hatch's default of "everything git does not ignore": a
+# release is public and permanent, and the working notes that sit beside the
+# code (.superpowers/, docs/) are neither meant for it nor removable from it.
+# The plugin files go in because the tests compare against them.
+include = [
+    "src",
+    "tests",
+    "hooks",
+    "commands",
+    "plugin.json",
+    ".claude-plugin",
+    ".agents",
+    "README.md",
+    "LICENSE",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

@@ -49,8 +49,8 @@ the agent's config file directly. The same works for Codex if you would
 rather not install the plugin:
 
 ```
-uvx claude-meanwhile hooks install --agent cursor
-uvx claude-meanwhile hooks install --agent codex
+uvx meanwhile-cli hooks install --agent cursor
+uvx meanwhile-cli hooks install --agent codex
 ```
 
 OpenCode has no shell hooks at all, only JavaScript plugins, so there the
@@ -59,7 +59,7 @@ or `~/.config/opencode/plugins/meanwhile.js` with `--user` — that calls the
 hook script whenever a session goes busy or idle:
 
 ```
-uvx claude-meanwhile hooks install --agent opencode
+uvx meanwhile-cli hooks install --agent opencode
 ```
 
 Restart OpenCode afterwards; plugins are loaded at startup. A file already
@@ -123,7 +123,7 @@ slash command, so run this instead and paste the printed instructions to
 your agent:
 
 ```
-uvx claude-meanwhile build-prompt --lang en --repo .
+uvx meanwhile-cli build-prompt --lang en --repo .
 ```
 
 It prints the exact same instructions the slash command uses, so the pool
@@ -157,8 +157,13 @@ split, an iTerm pane, or just another window — sitting in the *same directory
 you started it in*, and run:
 
 ```
-uvx claude-meanwhile
+uvx meanwhile-cli
 ```
+
+`uvx` runs it without installing anything. To install it for good instead,
+`uv tool install meanwhile-cli` (or `pipx install meanwhile-cli`) — the
+command that leaves on your path is plain `meanwhile`, and it takes the same
+arguments everywhere this README writes `uvx meanwhile-cli`.
 
 (While developing against a checkout of this repo instead of the published
 package, use `uv run meanwhile` from inside it.)
@@ -186,7 +191,7 @@ nothing in is not recorded.
 
 The interface follows the language recorded in the pool. Override it for
 just your pane with `--lang` and a short code, for example `uvx
-claude-meanwhile --lang en`, regardless of what the pool says. `tr` and `en`
+meanwhile-cli --lang en`, regardless of what the pool says. `tr` and `en`
 are the two the interface speaks; any other code leaves it in English.
 
 ## How it works
@@ -226,7 +231,7 @@ build-prompt              (same instructions, any other agent)
   necessarily the git root, which is why the TUI must be launched from the
   same directory). No interpreter, no network, no measurable delay added to
   your prompt.
-- **The `meanwhile` TUI**, run separately as `uvx claude-meanwhile`, polls
+- **The `meanwhile` TUI**, run separately as `uvx meanwhile-cli`, polls
   that state file and renders cards from the pool. It finds
   `.meanwhile/pool.json` at the git root above wherever you launched it. It makes no LLM calls and
   parses no source code at play time — it only reads the two JSON files

@@ -92,6 +92,16 @@ def test_the_build_command_forbids_secret_and_ignored_files():
     assert ".gitignore" in text
 
 
+def test_the_build_prompt_ends_by_telling_the_user_how_to_play():
+    """A finished build leaves a pool.json and nothing running. Unless the
+    agent's last message carries the command, a first-time user has a file
+    and no idea what to do with it."""
+    finish = PROMPT_SOURCE.read_text(encoding="utf-8").split("## Finish")[1]
+    assert "    uvx meanwhile-cli\n" in finish
+    assert "second terminal pane" in finish
+    assert "same directory" in finish
+
+
 def test_the_slash_command_delegates_rather_than_duplicating():
     body = BUILD_COMMAND.read_text(encoding="utf-8")
     assert "build_prompt.md" in body

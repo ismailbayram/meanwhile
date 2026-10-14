@@ -57,8 +57,17 @@ Rules:
 ## Finish
 
 1. Ensure `.meanwhile/scores.json` is in `.gitignore`; add it if missing.
-2. Run `uvx claude-meanwhile validate --repo .` (during development, from a
+2. Run `uvx meanwhile-cli validate --repo .` (during development, from a
    checkout of this plugin: `uv run meanwhile validate --repo .`) and fix
    anything it reports.
 3. Tell the user the item count and that `.meanwhile/pool.json` is ready to
    commit so their team shares the pool.
+4. Tell the user how to play, in {language} — building the pool starts
+   nothing, and no other step says how. Give them the command itself, in a
+   code block they can copy:
+
+       uvx meanwhile-cli
+
+   and say where it goes: a second terminal pane beside this one, opened in
+   this same directory. The pane waits there, deals cards from their next
+   prompt on, and `q` quits it.

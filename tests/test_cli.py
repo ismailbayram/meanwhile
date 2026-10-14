@@ -160,7 +160,7 @@ def test_without_lang_the_pool_language_is_used(tmp_path, monkeypatch):
     assert captured["language"] == "tr"
 
 
-@pytest.mark.parametrize("invoked_as", ["meanwhile", "claude-meanwhile"])
+@pytest.mark.parametrize("invoked_as", ["meanwhile", "meanwhile-cli"])
 def test_help_names_the_command_it_was_invoked_as(invoked_as, monkeypatch, capsys):
     """Both console scripts point at cli.main, so a hardcoded prog= would make
     one of them advertise the other's name."""

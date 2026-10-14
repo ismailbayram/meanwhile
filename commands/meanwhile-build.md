@@ -10,7 +10,7 @@ with the CLI, so Codex and Cursor users get the same text through
 
 Run:
 
-    uvx claude-meanwhile build-prompt --lang <code> --repo .
+    uvx meanwhile-cli build-prompt --lang <code> --repo .
 
 (during development, from a checkout of this plugin: `uv run meanwhile
 build-prompt --lang <code> --repo .`)

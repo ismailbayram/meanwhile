@@ -84,7 +84,7 @@ def main(argv: list[str] | None = None) -> int:
         return run_hooks(argv[1:])
 
     # No prog=: argparse takes it from sys.argv[0], so `meanwhile --help` and
-    # `claude-meanwhile --help` each print the name they were invoked by.
+    # `meanwhile-cli --help` each print the name they were invoked by.
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "command", nargs="?", default="play", choices=["play", "validate", "build-prompt"]
