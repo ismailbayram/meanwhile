@@ -1,134 +1,103 @@
 # meanwhile
 
-Claude Code takes a while on real tasks — often ten or fifteen minutes. During
-that wait, attention drifts: a browser tab, a chat, something unrelated. When
-the diff finally lands, you no longer hold the task in your head, and the
-review that follows is slower and shallower than it should be. meanwhile fills
-that wait with a quiz built entirely from your own repository, so that
-instead of drifting away you stay warmed up on the code you're about to
-review. It works the same way alongside Codex, Cursor and OpenCode.
+A quiz about your own repository that you play while your coding agent works,
+so the code is still fresh in your head when the diff lands. Works with
+Claude Code, Codex, Cursor and OpenCode.
 
 <p align="center">
   <img src="docs/images/card.svg" alt="A multiple-choice card about the repository, waiting for an answer" width="720">
 </p>
 
-When the agent finishes, the pane says so and you switch back to the diff:
-
 <p align="center">
   <img src="docs/images/done.svg" alt="The answered card, with a banner saying Claude Code is done" width="720">
 </p>
 
-## Install
+## Quick start
+
+Three steps, once per machine and project:
+
+1. **Connect your agent** — see [Installation](#installation) for your agent.
+2. **Build the question pool**, once per project:
+   - Claude Code: run `/meanwhile-build`
+   - any other agent: run `uvx meanwhile-cli build-prompt --lang en --repo .`
+     and paste the output to your agent
+3. **Open a second terminal** in the same directory as your agent and run:
+
+   ```
+   uvx meanwhile-cli
+   ```
+
+Now send your agent a prompt. The pane wakes up and starts asking questions,
+and tells you when the agent is done.
+
+## Installation
+
+You need [uv](https://docs.astral.sh/uv/) for the `uvx` commands. Then pick
+your agent:
 
 ### Claude Code
-
-meanwhile is a Claude Code plugin, and this repository is also its own
-marketplace (`.claude-plugin/marketplace.json`). Add it as a marketplace,
-then install the plugin from it:
 
 ```
 /plugin marketplace add ismailbayram/meanwhile
 /plugin install meanwhile@meanwhile
 ```
 
-(While developing against a checkout of this repo, add the local path
-instead — `/plugin marketplace add /path/to/meanwhile`.) Restart Claude Code
-afterwards so the plugin's hooks are picked up.
-
-Installing the plugin adds two hooks and one slash command; it does not
-install the `meanwhile` command itself. That's a separate, ordinary Python
-package — see "Daily use" below.
+Restart Claude Code.
 
 ### Codex
-
-This repository is a Codex plugin and marketplace too (`plugin.json`,
-`.agents/plugins/marketplace.json`). Add the marketplace:
 
 ```
 codex plugin marketplace add ismailbayram/meanwhile
 ```
 
-then install `meanwhile` from the Plugins Directory. Codex does not run a
-plugin's hooks until you have reviewed and trusted them, so do that once
-after installing — until then the pane never wakes.
+Install `meanwhile` from the Plugins Directory, then **review and trust its
+hooks** — Codex skips plugin hooks until you do.
 
-### Cursor, OpenCode, or Codex without the plugin
-
-Cursor has no plugin system, so `meanwhile` writes the hook registration into
-the agent's config file directly. The same works for Codex if you would
-rather not install the plugin:
+### Cursor
 
 ```
 uvx meanwhile-cli hooks install --agent cursor
-uvx meanwhile-cli hooks install --agent codex
 ```
 
-OpenCode has no shell hooks at all, only JavaScript plugins, so there the
-same command writes a small plugin file — `.opencode/plugins/meanwhile.js`,
-or `~/.config/opencode/plugins/meanwhile.js` with `--user` — that calls the
-hook script whenever a session goes busy or idle:
+### OpenCode
 
 ```
 uvx meanwhile-cli hooks install --agent opencode
 ```
 
-Restart OpenCode afterwards; plugins are loaded at startup. A file already
-at that path that `meanwhile` did not write is refused, never overwritten.
+Restart OpenCode.
 
-(While developing against a checkout of this repo instead of the published
-package, use `uv run meanwhile hooks install --agent codex` from inside it.)
+### Installing the command permanently (optional)
 
-Leaving off `--agent` (or passing `--agent auto` explicitly) installs for
-every agent whose config directory already exists in this project — it never
-creates one, so an agent you don't use is left alone. `meanwhile hooks status`
-reports what's registered and where — only the registrations meanwhile itself
-wrote, so a *plugin* install is invisible to it: Claude Code shows as `not
-installed (the plugin registers its own hooks separately)`, Codex as plain
-`not installed`. `meanwhile hooks
-uninstall --agent <agent>` takes a registration back out.
-
-Cursor only supports project-scope registration. `--user` is refused for it:
-Cursor runs its user-level hooks from `~/.cursor/`, while the hook keys the
-state file on its working directory, so a user-level registration could
-never wake the right pane.
-
-For Claude Code, a `hooks install` registration is written to
-`.claude/settings.local.json`, not `settings.json` — the entry embeds an
-absolute path to this machine's copy of the hook script, and `settings.json`
-is the file teams commit. A Codex, Cursor or OpenCode project registration
-has no such gitignored sibling to move to, so `hooks install` prints a note there — every
-time, whether or not git already tracks the file — saying that the path it
-just wrote is specific to this machine and that committing it would leave
-teammates running a script they do not have.
-
-If you both install the plugin *and* run `meanwhile hooks install` for the
-same agent, the two hooks fire twice per prompt. That's harmless — both copies
-are byte-identical (`hooks/meanwhile-state.sh` for the plugin,
-`~/.meanwhile/meanwhile-state.sh` for the standalone registration) and are run
-with the same arguments against the same state file, so it's one redundant
-run per event — but worth knowing so you don't go looking for a bug.
-
-`hooks` is handled before the normal argument parser is built, so it never
-appears in `meanwhile --help`. `build-prompt` (below) does appear there, but
-only as a bare choice with no explanation of what it does — so this README
-is where to learn about both.
-
-## First run
-
-In a project you want to play against, build a pool once, up front — nothing
-regenerates it in the background.
-
-**Claude Code**: run
+`uvx` runs the latest version without installing anything. If you prefer a
+regular command:
 
 ```
-/meanwhile-build
+uv tool install meanwhile-cli    # or: pipx install meanwhile-cli
 ```
 
-This asks Claude to read the repository — models, routes, the README,
-`CHANGELOG.md`, recent commits — and write `.meanwhile/pool.json`: a set of
-multiple-choice questions drawn from that project's actual code.
+The command is then just `meanwhile` — use it wherever this README says
+`uvx meanwhile-cli`.
 
-For a made-up online shop, one entry in that file might look like this:
+## Usage
+
+| Key | Action |
+| --- | --- |
+| `1`–`9` | answer |
+| `space` | next card |
+| `q` | quit |
+
+- Start the pane **from the same directory you started your agent in**,
+  otherwise it never wakes up.
+- Leave it open all day. Each new prompt deals a fresh round.
+- The interface follows the pool's language. Override it with
+  `--lang tr` or `--lang en`.
+
+## The question pool
+
+`/meanwhile-build` (or `build-prompt`) has the agent read your repository and
+write `.meanwhile/pool.json` — 30 to 50 multiple-choice questions. An entry
+looks like this:
 
 ```json
 {
@@ -145,138 +114,39 @@ For a made-up online shop, one entry in that file might look like this:
 }
 ```
 
-In the pane that becomes the question, its three numbered choices and the
-file it came from. Press `2` and you get `correct` followed by the `why`
-sentence; press `1` or `3` and you get `wrong` followed by the same sentence,
-which is written to explain the right answer.
+- **Commit `pool.json`** so the whole team plays the same pool and nobody pays
+  to build it again.
+- **Language:** `--lang` takes a language code, not a name. `tr` and `en` are
+  the two the interface speaks; any other code (`de`, `fr`, …) writes the
+  questions in that language and keeps the interface in English.
+- **Refreshing:** when the repository is about 50 commits past the pool, the
+  pane shows a banner. Run the build step again and commit the new file.
+  Nothing is regenerated automatically.
+- Scores are kept in `.meanwhile/scores.json`, which is gitignored.
 
-**Codex, Cursor, OpenCode, or any other agent**: `/meanwhile-build` is a Claude Code
-slash command, so run this instead and paste the printed instructions to
-your agent:
+## Commands
 
-```
-uvx meanwhile-cli build-prompt --lang en --repo .
-```
+| Command | What it does |
+| --- | --- |
+| `uvx meanwhile-cli` | open the quiz pane |
+| `uvx meanwhile-cli build-prompt --lang en --repo .` | print the pool-building instructions for any agent |
+| `uvx meanwhile-cli validate --repo .` | check `pool.json` |
+| `uvx meanwhile-cli hooks install --agent <agent>` | connect an agent without its plugin (`claude`, `codex`, `cursor`, `opencode`); add `--user` for every project (not Cursor) |
+| `uvx meanwhile-cli hooks status` | show which agents are connected |
+| `uvx meanwhile-cli hooks uninstall --agent <agent>` | disconnect |
 
-It prints the exact same instructions the slash command uses, so the pool
-comes out the same either way.
-
-Commit `.meanwhile/pool.json`. It's checked into the repository on purpose, so
-everyone on the team plays the same pool and nobody pays to regenerate it.
-
-`--lang` takes a short language code — `tr` or `en` — not a language name:
-`--lang Turkish` is not recognised and silently leaves the interface in
-English. Those two codes are the only ones the interface itself speaks.
-
-A pool built by the build prompt records the language it was written in, and
-the playing interface follows it, with `--lang` overriding that for just your
-pane. `--lang` on `build-prompt` controls what language the cards themselves
-get written in — any code is allowed there, so `--lang de` writes German cards
-and leaves the interface in English. `pool.json` carries the same code in a
-top-level `language` field (it defaults to `en` when absent); the playing
-interface's own chrome — the waiting banner, "correct"/"wrong", and so on —
-follows that field, in `tr` or `en` and in English for anything else.
-
-## Daily use
-
-Open a second terminal pane next to the one running your agent — a tmux
-split, an iTerm pane, or just another window — sitting in the *same directory
-you started it in*, and run:
-
-```
-uvx meanwhile-cli
-```
-
-`uvx` runs it without installing anything. To install it for good instead,
-`uv tool install meanwhile-cli` (or `pipx install meanwhile-cli`) — the
-command that leaves on your path is plain `meanwhile`, and it takes the same
-arguments everywhere this README writes `uvx meanwhile-cli`.
-
-(While developing against a checkout of this repo instead of the published
-package, use `uv run meanwhile` from inside it.)
-
-Open it whenever you like — before your first prompt is fine. The pane sits
-waiting until your agent starts working, wakes up within about a second of
-you submitting a prompt, and serves multiple-choice cards about the
-codebase one at a time. Answer with the number key for the choice you want;
-the footer only ever offers the keys the card on screen can actually take.
-Answering shows the explanation, `space` deals the next card, and a streak
-counter tracks that wait. If a wait runs long enough to reach the end of the
-pool, the pane says so and sits out the rest of it rather than repeating
-questions.
-
-The moment your agent finishes, the current card freezes and the pane shows
-`<Agent> is done ^` (or `the agent is done ^` if it can't tell which one),
-which is your cue to switch back.
-
-Then leave it open. It stays on that line — it does not clear itself or
-return to the waiting message — until your next prompt, which deals a fresh,
-re-shuffled round, so a long wait never exhausts the pool for the next one.
-You only ever press `q` when you are done for the day. Each wait is scored as
-its own session and added to your totals when it ends; a wait you answered
-nothing in is not recorded.
-
-The interface follows the language recorded in the pool. Override it for
-just your pane with `--lang` and a short code, for example `uvx
-meanwhile-cli --lang en`, regardless of what the pool says. `tr` and `en`
-are the two the interface speaks; any other code leaves it in English.
+`hooks install` writes an absolute path from your machine into the agent's
+config, so don't commit that file for Codex, Cursor or OpenCode.
 
 ## How it works
 
-meanwhile is three independent parts that only ever talk to each other
-through two files on disk — nothing imports anything else, and each part can
-be tested alone:
+Hooks in your agent write `busy` or `idle` to a small file in
+`~/.meanwhile/state/` when you send a prompt and when the agent finishes. The
+pane watches that file and shows cards from `pool.json`. Only the build step
+uses an LLM; the pane makes no network calls.
 
-```
-/meanwhile-build          (Claude Code slash command)
-build-prompt              (same instructions, any other agent)
-        │  writes
-        ▼
-   .meanwhile/pool.json          ← committed to the repo, shared by the team
-        │  reads
-        ▼
-   meanwhile TUI  ──watches──►  ~/.meanwhile/state/<project-hash>.json
-   (uvx, separate pane)                    ▲
-                                           │ writes
-                    hooks: plugin (Claude Code, Codex), or `meanwhile
-                    hooks install` (those two, Cursor, OpenCode)
-```
+## Development
 
-- **`/meanwhile-build`** (or `meanwhile build-prompt` for every other agent) is
-  the only part that costs tokens or touches an LLM. It reads the repository
-  and writes `.meanwhile/pool.json`.
-- **The hooks** are a few lines of pure bash (`hooks/meanwhile-state.sh` for
-  the plugin; the same script, packaged inside the wheel and copied to
-  `~/.meanwhile/meanwhile-state.sh`, for `hooks install`), fired on the moment
-  each agent starts and stops working — `UserPromptSubmit`/`Stop` for
-  Claude Code and Codex, `beforeSubmitPrompt`/`stop` for Cursor, and the
-  `session.status` event for OpenCode, whose plugin file does nothing but
-  call the same script. They write nothing but a
-  `{"status": "busy"|"idle", "ts": ..., "agent": ...}` file under
-  `~/.meanwhile/state/`, keyed by a hash of the directory the agent was
-  started in (that is what `CLAUDE_PROJECT_DIR` holds for Claude Code — not
-  necessarily the git root, which is why the TUI must be launched from the
-  same directory). No interpreter, no network, no measurable delay added to
-  your prompt.
-- **The `meanwhile` TUI**, run separately as `uvx meanwhile-cli`, polls
-  that state file and renders cards from the pool. It finds
-  `.meanwhile/pool.json` at the git root above wherever you launched it. It makes no LLM calls and
-  parses no source code at play time — it only reads the two JSON files
-  above.
-
-## Refreshing a stale pool
-
-`pool.json` records the commit it was built from. If the repository has
-moved on more than about 50 commits since then, the TUI shows a banner —
-`pool is N commits behind — run the build command for fresh questions` — but
-it never regenerates the pool on its own. Silent background regeneration
-would spend tokens you didn't ask for, which is exactly what this design
-avoids. Run `/meanwhile-build` (or `meanwhile build-prompt`) again when you see
-the banner (or whenever the pool just feels stale) and commit the updated
-file.
-
-## Scores
-
-Your running total and best streak are written to `.meanwhile/scores.json`.
-That file is gitignored — scores are local to your machine and never shared
-or synced between teammates.
+From a checkout of this repository, use `uv run meanwhile` in place of
+`uvx meanwhile-cli`, and `/plugin marketplace add /path/to/meanwhile` for the
+Claude Code plugin. Tests: `uv run --extra dev python -m pytest`.
