@@ -14,7 +14,7 @@ def test_an_unknown_language_falls_back_to_english():
 
 
 def test_turkish_and_english_differ():
-    assert strings.text("tr", "waiting", agent="Codex") != strings.text("en", "waiting", agent="Codex")
+    assert strings.text("tr", "done", agent="Codex") != strings.text("en", "done", agent="Codex")
 
 
 def test_the_agent_name_is_substituted():

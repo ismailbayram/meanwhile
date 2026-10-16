@@ -6,7 +6,7 @@ from textual.binding import Binding
 from textual.widgets import Footer
 
 from meanwhile import game, scores, state, strings
-from meanwhile.app import DONE, PLAYING, WAITING, MeanwhileApp
+from meanwhile.app import DONE, PLAYING, MeanwhileApp
 from meanwhile.pool import Pool, QuizItem
 from meanwhile.scores import SCORES_RELPATH
 
@@ -207,7 +207,7 @@ async def test_going_idle_with_no_repo_dir_does_not_write_or_raise(tmp_path):
         assert not (tmp_path / SCORES_RELPATH).exists()
 
 
-# --- lifecycle: waiting -> playing -> done -> playing ----------------------
+# --- lifecycle: playing -> done -> playing ---------------------------------
 
 
 def lifecycle_app(items, status, tmp_path, poll_seconds=60):
@@ -222,8 +222,10 @@ def lifecycle_app(items, status, tmp_path, poll_seconds=60):
     )
 
 
-async def test_launching_while_idle_with_no_state_file_waits(tmp_path):
-    """The order the README documents: open the pane before submitting a prompt."""
+async def test_launching_with_no_state_file_deals_a_card_at_once(tmp_path):
+    """A pool is all the pane needs. Hooks that never ran — not installed yet,
+    agent not restarted, pane opened in another directory — must not leave the
+    player staring at an empty screen."""
     project = tmp_path / "project"
     project.mkdir()
     empty_state_root = tmp_path / "no-state-here"  # the hooks have never run
@@ -236,18 +238,32 @@ async def test_launching_while_idle_with_no_state_file_waits(tmp_path):
         poll_seconds=60,
     )
     async with app.run_test() as pilot:
-        poll(app, times=5)  # several polls: none of them may end the game
+        poll(app, times=5)  # several idle polls: none of them may end the game
         await pilot.pause()
-        assert app.phase == WAITING
+        assert app.phase == PLAYING
+        assert "passport_groups" in text_of(app.query_one("#card"))
         assert "done" not in text_of(app.query_one("#status")).lower()
-        assert "waiting" in text_of(app.query_one("#status")).lower()
-        assert text_of(app.query_one("#card")) == ""
 
-        await pilot.press("2")  # waiting: no card, no input
-        assert app.session.answered == 0
-        app.action_choose(2)  # and the handler refuses it too
-        assert app.session.answered == 0
-        assert not (tmp_path / SCORES_RELPATH).exists()
+        await pilot.press("2")
+        await pilot.pause()
+        assert app.session.correct == 1
+
+
+async def test_a_busy_edge_while_already_playing_keeps_the_card(tmp_path):
+    """Opened before the prompt, the pane is already dealing. The prompt that
+    follows must not reshuffle the card out from under the player."""
+    status = {"value": "idle"}
+    app = lifecycle_app([QUIZ, NARROW], status, tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.pause()
+        session, card = app.session, text_of(app.query_one("#card"))
+
+        status["value"] = "busy"
+        poll(app)
+        await pilot.pause()
+        assert app.phase == PLAYING
+        assert app.session is session
+        assert text_of(app.query_one("#card")) == card
 
 
 async def test_a_second_busy_period_plays_a_fresh_session(tmp_path):
@@ -256,15 +272,15 @@ async def test_a_second_busy_period_plays_a_fresh_session(tmp_path):
     async with app.run_test() as pilot:
         poll(app)
         await pilot.pause()
-        assert app.phase == WAITING
+        assert app.phase == PLAYING
+        first_session = app.session
 
         status["value"] = "busy"
         poll(app)
         await pilot.pause()
-        assert app.phase == PLAYING
-        first_session = app.session
         await pilot.press("2")
         await pilot.pause()
+        assert app.session is first_session
         assert app.session.answered == 1
 
         status["value"] = "idle"
@@ -289,6 +305,52 @@ async def test_a_second_busy_period_plays_a_fresh_session(tmp_path):
         await pilot.pause()
         saved = json.loads((tmp_path / SCORES_RELPATH).read_text(encoding="utf-8"))
         assert saved["answered"] == 2  # both sessions banked, neither one twice
+
+
+async def test_space_on_an_exhausted_pool_deals_a_fresh_round(tmp_path):
+    status = {"value": "idle"}
+    app = lifecycle_app([QUIZ], status, tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.press("2")
+        await pilot.press("space")
+        await pilot.pause()
+        assert game.current(app.session) is None
+        assert "space" in text_of(app.query_one("#card"))
+
+        await pilot.press("space")
+        await pilot.pause()
+        assert game.current(app.session) is QUIZ
+        assert app.session.answered == 0
+    saved = json.loads((tmp_path / SCORES_RELPATH).read_text(encoding="utf-8"))
+    assert saved["answered"] == 1  # the finished round was banked, and only once
+
+
+async def test_quitting_mid_session_banks_it(tmp_path):
+    """Without hooks there is never an idle edge, so `q` is where a session ends."""
+    status = {"value": "idle"}
+    app = lifecycle_app([QUIZ], status, tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.press("2")
+        await pilot.pause()
+        await pilot.press("q")
+        await pilot.pause()
+    saved = json.loads((tmp_path / SCORES_RELPATH).read_text(encoding="utf-8"))
+    assert saved["answered"] == 1
+
+
+async def test_quitting_after_done_does_not_bank_twice(tmp_path, monkeypatch):
+    calls = []
+    monkeypatch.setattr(scores, "record_session", lambda repo_dir, session: calls.append(session))
+    status = {"value": "busy"}
+    app = lifecycle_app([QUIZ], status, tmp_path)
+    async with app.run_test() as pilot:
+        await pilot.press("2")
+        status["value"] = "idle"
+        poll(app)
+        await pilot.pause()
+        await pilot.press("q")
+        await pilot.pause()
+    assert len(calls) == 1
 
 
 async def test_a_session_is_banked_once_no_matter_how_many_idle_polls(tmp_path, monkeypatch):
@@ -353,14 +415,6 @@ async def test_the_footer_follows_the_card_not_the_widest_card_in_the_pool(tmp_p
         assert sorted(seen) == [2, 3]  # both widths really were on screen
 
 
-async def test_the_waiting_screen_offers_no_card_keys(tmp_path):
-    app = app_for([QUIZ, NARROW], status="idle", tmp_path=tmp_path)
-    async with app.run_test() as pilot:
-        await pilot.pause()
-        assert app.phase == WAITING
-        assert card_keys(app) == []
-
-
 async def test_the_done_screen_offers_no_card_keys(tmp_path):
     status = {"value": "busy"}
     app = lifecycle_app([QUIZ, NARROW], status, tmp_path)
@@ -399,12 +453,12 @@ async def test_space_does_nothing_before_the_card_is_answered(tmp_path):
 # --- language ---------------------------------------------------------
 
 
-async def test_the_waiting_line_is_turkish_when_the_pool_is(tmp_path):
-    app = app_for([QUIZ], status="idle", tmp_path=tmp_path, language="tr")
+async def test_the_done_line_is_turkish_when_the_pool_is(tmp_path):
+    app = app_for([QUIZ], tmp_path=tmp_path, language="tr")
     async with app.run_test() as pilot:
-        await pilot.pause()
+        await drive_to_done(app, pilot)
         assert text_of(app.query_one("#status")) == strings.text(
-            "tr", "waiting", agent=strings.text("tr", "agent")
+            "tr", "done", agent=strings.text("tr", "agent")
         )
 
 

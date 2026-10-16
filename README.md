@@ -27,8 +27,8 @@ Three steps, once per machine and project:
    uvx meanwhile-cli
    ```
 
-Now send your agent a prompt. The pane wakes up and starts asking questions,
-and tells you when the agent is done.
+The pane starts asking questions right away. When your agent finishes a
+prompt, the pane tells you so you can switch back to the diff.
 
 ## Installation
 
@@ -88,8 +88,10 @@ The command is then just `meanwhile` — use it wherever this README says
 | `q` | quit |
 
 - Start the pane **from the same directory you started your agent in**,
-  otherwise it never wakes up.
-- Leave it open all day. Each new prompt deals a fresh round.
+  otherwise it cannot tell when the agent is done. The quiz itself works
+  either way.
+- Leave it open all day. Each new prompt after the agent finishes deals a
+  fresh round; when the pool runs out, `space` starts a new one.
 - The interface follows the pool's language. Override it with
   `--lang tr` or `--lang en`.
 

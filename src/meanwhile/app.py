@@ -12,9 +12,9 @@ from textual.widgets import Footer, Static
 from . import agents, game, scores, strings
 from .pool import Pool, QuizItem
 
-# Lifecycle phases. The pane is opened once and left open: it waits for the
-# agent to start, plays for exactly as long as it is busy, then waits again.
-WAITING = "waiting"
+# Lifecycle phases. The pane deals cards as soon as it opens — a pool is all
+# it needs. The agent's hooks only add to that: an idle edge freezes the card
+# and says the agent is done, and the next busy edge deals a fresh round.
 PLAYING = "playing"
 DONE = "done"
 
@@ -53,7 +53,7 @@ class MeanwhileApp(App):
         self.language = language
         self.agent_source = agent_source
         self.session = game.start_session(pool)
-        self.phase = WAITING
+        self.phase = PLAYING
         self._last_status = "idle"
         self._answered = False
 
@@ -115,6 +115,10 @@ class MeanwhileApp(App):
             self._finish_playing()
 
     def _start_playing(self) -> None:
+        if self.phase == PLAYING:
+            # Already dealing — the pane was opened before the prompt. Keep the
+            # card on screen rather than reshuffling under the player.
+            return
         self.phase = PLAYING
         self.session = game.start_session(self.pool)  # re-shuffled: the cards come back
         self._answered = False
@@ -128,13 +132,23 @@ class MeanwhileApp(App):
         self.phase = DONE
         self.refresh_bindings()  # DONE takes no input: the card keys leave the footer
         self.query_one("#status").update(strings.text(self.language, "done", agent=self._agent_name()))
-        # Exactly once per session: the `phase != PLAYING` guard above is what
-        # guarantees it — the only way back into PLAYING is _start_playing,
-        # which deals a new session.
+        self._record()
+
+    def _record(self) -> None:
+        # Exactly once per session: both callers leave PLAYING first, and the
+        # only way back into it is _start_playing, which deals a new session.
         if self.repo_dir is not None and self.session.answered:
             scores.record_session(self.repo_dir, self.session)
 
     # --- actions --------------------------------------------------------
+
+    async def action_quit(self) -> None:
+        # Without hooks there is never an idle edge, so quitting is the only
+        # moment a session ends. Score it here rather than lose it.
+        if self.phase == PLAYING:
+            self.phase = DONE
+            self._record()
+        self.exit()
 
     def action_choose(self, number: int) -> None:
         item = game.current(self.session)
@@ -146,7 +160,18 @@ class MeanwhileApp(App):
         self._resolve(game.answer(self.session, index))
 
     def action_next(self) -> None:
-        if self.phase != PLAYING or not self._answered:
+        if self.phase != PLAYING:
+            return
+        if game.current(self.session) is None:
+            # Out of cards. Without hooks no busy edge will ever come to deal
+            # another round, so `space` does it: bank this one, start afresh.
+            self._record()
+            self.session = game.start_session(self.pool)
+            self._answered = False
+            self.query_one("#feedback").update("")
+            self._render()
+            return
+        if not self._answered:
             return
         game.advance(self.session)
         self._answered = False
@@ -166,12 +191,6 @@ class MeanwhileApp(App):
         # `check_action` has too.
         self.refresh_bindings()
         card = self.query_one("#card")
-        if self.phase == WAITING:
-            self.query_one("#status").update(strings.text(self.language, "waiting", agent=self._agent_name()))
-            card.update("")
-            self.query_one("#score").update("")
-            return
-
         item = game.current(self.session)
         if item is None:
             card.update(strings.text(self.language, "exhausted"))

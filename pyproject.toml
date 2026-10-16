@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "meanwhile-cli"
-version = "0.1.0"
+version = "0.1.1"
 description = "Play a quiz about your own repository while your coding agent works"
 readme = "README.md"
 requires-python = ">=3.10"

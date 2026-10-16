@@ -1,4 +1,4 @@
-"""The interface's six strings, in the languages meanwhile ships.
+"""The interface's strings, in the languages meanwhile ships.
 
 A dictionary, deliberately, and not an i18n framework: there is no catalog to
 extract, no compilation step and no locale negotiation. The cards themselves
@@ -10,23 +10,21 @@ from __future__ import annotations
 
 DEFAULT_LANGUAGE = "en"
 
-KEYS = ("waiting", "done", "exhausted", "stale", "correct", "wrong", "agent")
+KEYS = ("done", "exhausted", "stale", "correct", "wrong", "agent")
 
 _TABLE = {
     "en": {
         "agent": "the agent",
-        "waiting": "Waiting for {agent} to start working — submit a prompt and the game begins.",
         "done": "{agent} is done ^ — switch back to the diff; this pane keeps running.",
-        "exhausted": "Pool exhausted for this wait — the next one deals a fresh round.",
+        "exhausted": "That was every question in the pool — press space for a fresh round.",
         "stale": "pool is {behind} commits behind — run the build command for fresh questions",
         "correct": "correct",
         "wrong": "wrong",
     },
     "tr": {
         "agent": "ajan",
-        "waiting": "{agent} çalışmaya başlayınca oyun başlıyor — bir istem gönder.",
         "done": "{agent} bitirdi ^ — diff'e dön; bu pencere açık kalıyor.",
-        "exhausted": "Bu bekleme için havuz bitti — sonraki bekleme yeni bir tur dağıtıyor.",
+        "exhausted": "Havuzdaki bütün sorular bitti — yeni tur için boşluğa bas.",
         "stale": "havuz {behind} commit geride — tazelemek için build komutunu çalıştır",
         "correct": "doğru",
         "wrong": "yanlış",
