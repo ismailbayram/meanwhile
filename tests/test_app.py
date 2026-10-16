@@ -325,6 +325,22 @@ async def test_space_on_an_exhausted_pool_deals_a_fresh_round(tmp_path):
     assert saved["answered"] == 1  # the finished round was banked, and only once
 
 
+async def test_an_answered_question_is_dealt_last_next_time(tmp_path):
+    """Remembered across panes, not just within one: a second pane opened on
+    the same repository leads with what the first one never got to."""
+    status = {"value": "idle"}
+    first = lifecycle_app([QUIZ, NARROW], status, tmp_path)
+    async with first.run_test() as pilot:
+        await pilot.pause()
+        answered = game.current(first.session)
+        first.action_choose(1)
+        await pilot.pause()
+
+    for _ in range(10):  # the shuffle must never put it first again
+        second = lifecycle_app([QUIZ, NARROW], status, tmp_path)
+        assert second.session.items[-1] is answered
+
+
 async def test_quitting_mid_session_banks_it(tmp_path):
     """Without hooks there is never an idle edge, so `q` is where a session ends."""
     status = {"value": "idle"}

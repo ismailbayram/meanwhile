@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import random
 from dataclasses import dataclass, field
 
@@ -31,10 +32,26 @@ class Session:
     _answered_index: int = field(default=-1, init=False, repr=False, compare=False)
 
 
-def start_session(pool: Pool, rng: random.Random | None = None) -> Session:
-    items = list(pool.items)
-    (rng or random.Random()).shuffle(items)
-    return Session(items=items)
+def item_key(item) -> str:
+    """A stable name for a question, for remembering it was answered.
+
+    The question text, not the item's position: a rebuilt or extended pool
+    reorders items, and a question that survives a rebuild word for word is
+    the same question to the player.
+    """
+    return hashlib.sha256(item.q.encode("utf-8")).hexdigest()[:16]
+
+
+def start_session(
+    pool: Pool, rng: random.Random | None = None, seen: frozenset[str] | set[str] = frozenset()
+) -> Session:
+    """A shuffled round over the whole pool, questions not in `seen` first."""
+    rng = rng or random.Random()
+    fresh = [item for item in pool.items if item_key(item) not in seen]
+    repeats = [item for item in pool.items if item_key(item) in seen]
+    rng.shuffle(fresh)
+    rng.shuffle(repeats)
+    return Session(items=fresh + repeats)
 
 
 def finished(session: Session) -> bool:

@@ -84,3 +84,15 @@ def test_answering_a_finished_session_is_rejected():
     assert game.finished(session) is True
     with pytest.raises(game.GameError):
         game.answer(session, 1)
+
+
+def test_unseen_questions_come_before_seen_ones():
+    seen = {game.item_key(QUIZ)}
+    for seed in range(20):  # whatever the shuffle, the seen one is last
+        session = game.start_session(make_pool([QUIZ, QUIZ_2]), rng=random.Random(seed), seen=seen)
+        assert session.items == [QUIZ_2, QUIZ]
+
+
+def test_the_item_key_follows_the_question_text_not_the_position():
+    assert game.item_key(QUIZ) == game.item_key(QuizItem(**{**QUIZ.__dict__, "source": "moved.py"}))
+    assert game.item_key(QUIZ) != game.item_key(QUIZ_2)

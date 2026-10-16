@@ -121,10 +121,17 @@ looks like this:
 - **Language:** `--lang` takes a language code, not a name. `tr` and `en` are
   the two the interface speaks; any other code (`de`, `fr`, …) writes the
   questions in that language and keeps the interface in English.
+- **Adding questions:** run the build step again. When a pool already
+  exists it keeps every question and adds 30 new ones. Ask your agent for
+  "a fresh pool" if you want to replace it instead.
 - **Refreshing:** when the repository is about 50 commits past the pool, the
   pane shows a banner. Run the build step again and commit the new file.
   Nothing is regenerated automatically.
-- Scores are kept in `.meanwhile/scores.json`, which is gitignored.
+- **Repeats:** within a round no question repeats. Across rounds, questions
+  you have not answered yet come first; once you have answered them all, it
+  starts over.
+- Scores and the answered-question list are kept in
+  `.meanwhile/scores.json`, which is gitignored.
 
 ## Commands
 

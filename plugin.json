@@ -1,7 +1,7 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "meanwhile",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Play a quiz about your own repository while Claude Code is working, so your context stays loaded for the diff review that follows.",
   "author": {
     "name": "Ismail Bayram"

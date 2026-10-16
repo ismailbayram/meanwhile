@@ -20,9 +20,26 @@ pool's `language` field records exactly that code. `tr` and `en` are the two
 the playing interface itself speaks; any other code is still fine — the cards
 get written in that language and the interface stays English.
 
+## Extending an existing pool
+
+If `.meanwhile/pool.json` already exists, extend it rather than replacing it,
+unless the user asked for a fresh pool:
+
+- Keep every existing item exactly as it is — players' progress is keyed on
+  the question text, so a reworded question counts as a new one. Only drop
+  an item whose `source` file no longer exists.
+- Add 30 new items. None may ask what an existing item already asks; read
+  the existing questions first, and look for parts of the repository they
+  do not cover yet.
+- Keep the pool's own `language` — it wins over the language named above,
+  which is only a default — unless the user asked for another one.
+- Set `builtAt` and `headSha` to today and the current commit.
+
 ## What to write
 
-Write `.meanwhile/pool.json` with 30-50 `quiz` items, using exactly this shape:
+For a new pool, write `.meanwhile/pool.json` with 30-50 `quiz` items; when
+extending, keep the same envelope and append to `items`. Use exactly this
+shape:
 
     {
       "builtAt": "<today, YYYY-MM-DD>",
@@ -60,7 +77,8 @@ Rules:
 2. Run `uvx meanwhile-cli validate --repo .` (during development, from a
    checkout of this plugin: `uv run meanwhile validate --repo .`) and fix
    anything it reports.
-3. Tell the user the item count and that `.meanwhile/pool.json` is ready to
+3. Tell the user the item count — when extending, how many were added and
+   how many there are now — and that `.meanwhile/pool.json` is ready to
    commit so their team shares the pool.
 4. Tell the user how to play, in {language} — building the pool starts
    nothing, and no other step says how. Give them the command itself, in a

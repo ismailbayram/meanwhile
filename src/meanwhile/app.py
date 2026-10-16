@@ -52,10 +52,15 @@ class MeanwhileApp(App):
         self.poll_seconds = poll_seconds
         self.language = language
         self.agent_source = agent_source
-        self.session = game.start_session(pool)
+        self.session = self._deal()
         self.phase = PLAYING
         self._last_status = "idle"
         self._answered = False
+
+    def _deal(self) -> game.Session:
+        """A fresh round, questions this player has not answered yet first."""
+        seen = scores.load_seen(self.repo_dir) if self.repo_dir is not None else set()
+        return game.start_session(self.pool, seen=seen)
 
     def _agent_name(self) -> str:
         return agents.label_for(self.agent_source()) or strings.text(self.language, "agent")
@@ -120,7 +125,7 @@ class MeanwhileApp(App):
             # card on screen rather than reshuffling under the player.
             return
         self.phase = PLAYING
-        self.session = game.start_session(self.pool)  # re-shuffled: the cards come back
+        self.session = self._deal()  # re-shuffled: the cards come back
         self._answered = False
         self.query_one("#status").update("")
         self.query_one("#feedback").update("")
@@ -158,6 +163,10 @@ class MeanwhileApp(App):
         if not 0 <= index < len(item.choices):
             return
         self._resolve(game.answer(self.session, index))
+        if self.repo_dir is not None:
+            scores.mark_seen(
+                self.repo_dir, game.item_key(item), {game.item_key(i) for i in self.pool.items}
+            )
 
     def action_next(self) -> None:
         if self.phase != PLAYING:
@@ -166,7 +175,7 @@ class MeanwhileApp(App):
             # Out of cards. Without hooks no busy edge will ever come to deal
             # another round, so `space` does it: bank this one, start afresh.
             self._record()
-            self.session = game.start_session(self.pool)
+            self.session = self._deal()
             self._answered = False
             self.query_one("#feedback").update("")
             self._render()

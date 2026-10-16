@@ -102,6 +102,17 @@ def test_the_build_prompt_ends_by_telling_the_user_how_to_play():
     assert "same directory" in finish
 
 
+def test_the_build_prompt_extends_an_existing_pool_instead_of_replacing_it():
+    """Running the build again is how a player gets more questions. Replacing
+    the pool would throw away the questions the team already has, and with
+    them every player's record of which ones they answered."""
+    text = PROMPT_SOURCE.read_text(encoding="utf-8")
+    extend = text.split("## Extending an existing pool")[1].split("##")[0]
+    assert "Keep every existing item exactly as it is" in extend
+    assert "fresh pool" in extend
+    assert "`language`" in extend
+
+
 def test_the_slash_command_delegates_rather_than_duplicating():
     body = BUILD_COMMAND.read_text(encoding="utf-8")
     assert "build_prompt.md" in body
