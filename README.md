@@ -95,6 +95,19 @@ The command is then just `meanwhile` — use it wherever this README says
 - The interface follows the pool's language. Override it with
   `--lang tr` or `--lang en`.
 
+## Adding more questions
+
+Run the same build step again:
+
+- Claude Code: `/meanwhile-build`
+- any other agent: `uvx meanwhile-cli build-prompt --lang en --repo .` and
+  paste the output to your agent
+
+When `.meanwhile/pool.json` already exists, this **keeps every question and
+adds 30 new ones** that don't repeat the existing ones. Commit the updated
+file. To throw the old questions away instead, tell your agent you want a
+fresh pool.
+
 ## The question pool
 
 `/meanwhile-build` (or `build-prompt`) has the agent read your repository and
@@ -121,9 +134,6 @@ looks like this:
 - **Language:** `--lang` takes a language code, not a name. `tr` and `en` are
   the two the interface speaks; any other code (`de`, `fr`, …) writes the
   questions in that language and keeps the interface in English.
-- **Adding questions:** run the build step again. When a pool already
-  exists it keeps every question and adds 30 new ones. Ask your agent for
-  "a fresh pool" if you want to replace it instead.
 - **Refreshing:** when the repository is about 50 commits past the pool, the
   pane shows a banner. Run the build step again and commit the new file.
   Nothing is regenerated automatically.
@@ -138,7 +148,7 @@ looks like this:
 | Command | What it does |
 | --- | --- |
 | `uvx meanwhile-cli` | open the quiz pane |
-| `uvx meanwhile-cli build-prompt --lang en --repo .` | print the pool-building instructions for any agent |
+| `uvx meanwhile-cli build-prompt --lang en --repo .` | print the instructions that build the pool, or add 30 questions to an existing one, for any agent |
 | `uvx meanwhile-cli validate --repo .` | check `pool.json` |
 | `uvx meanwhile-cli hooks install --agent <agent>` | connect an agent without its plugin (`claude`, `codex`, `cursor`, `opencode`); add `--user` for every project (not Cursor) |
 | `uvx meanwhile-cli hooks status` | show which agents are connected |
